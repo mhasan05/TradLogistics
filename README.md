@@ -1,2 +1,3 @@
 # TradLogistics
-TradLogistics is a comprehensive on-demand package delivery platform targeting the Jamaican and Caribbean markets.
+TradLogistics is a comprehensive on-demand package delivery platform targeting the Jamaican and Caribbean markets. It operates through three interconnected applications: Customer Mobile App, Driver Mobile App, and Business Web Portal, supported by a robust backend infrastructure. The platform connects customers with independent drivers for seamless delivery services, including package tracking, real-time notifications, and diverse payment options. It offers solutions for B2C, small businesses, and e-commerce companies, with features like bulk order management, delivery scheduling, and analytics. The platform ensures efficiency, security, and scalability to handle varying delivery needs and business growth.
+
