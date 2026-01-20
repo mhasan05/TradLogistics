@@ -19,3 +19,22 @@ class PayoutMethod(models.Model):
     account_type = models.CharField(max_length=100)
     created_on = models.DateTimeField(auto_now_add=True)
     updated_on = models.DateTimeField(auto_now=True)
+
+
+
+
+class Withdrawal(models.Model):
+    trx_id = models.CharField(max_length=100)
+    driver_id = models.ForeignKey(Driver, on_delete=models.CASCADE)
+    amount = models.FloatField()
+    bank_name = models.CharField(max_length=100)
+    branch = models.CharField(max_length=100)
+    swift_code = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=100)
+    account_name = models.CharField(max_length=100)
+    account_type = models.CharField(max_length=100)
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=100)
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True)
