@@ -1,22 +1,18 @@
 from django.db import models
 from accounts.models import User
 from driver.models import Driver
-# Create your models here.
+from accounts.models import TimestampedModel
+import uuid
 
-class ChatRoom(models.Model):
-    room_id = models.AutoField(primary_key=True)
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    driver_id = models.ForeignKey(Driver, on_delete=models.CASCADE)
+class ChatRoom(TimestampedModel):
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_rooms_as_customer')
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='chat_rooms')
     is_active = models.BooleanField(default=True)
-    created_on = models.DateTimeField(auto_now_add=True)
-    updated_on = models.DateTimeField(auto_now=True)
 
-
-
-class Message(models.Model):
-    room_id = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
-    sender_id = models.ForeignKey(User, on_delete=models.CASCADE)
+class Message(TimestampedModel):
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)  # works for both customer & driver.user
     content = models.TextField()
     is_seen = models.BooleanField(default=False)
-    created_on = models.DateTimeField(auto_now_add=True)
-    updated_on = models.DateTimeField(auto_now=True)
+    image = models.ImageField(upload_to='chat_images/', null=True, blank=True)

@@ -1,20 +1,14 @@
 from django.db import models
+from accounts.models import TimestampedModel
 
-class AboutUs(models.Model):
-    title = models.CharField(max_length=100)
-    description = models.TextField()
-    created_on = models.DateTimeField(auto_now_add=True)
-    updated_on = models.DateTimeField(auto_now=True)
+class AboutUs(TimestampedModel):
+    title = models.CharField(max_length=200)
+    content = models.TextField()
 
-class PrivecyPolicy(models.Model):
-    title = models.CharField(max_length=100)
-    description = models.TextField()
-    created_on = models.DateTimeField(auto_now_add=True)
-    updated_on = models.DateTimeField(auto_now=True)
+class PrivacyPolicy(TimestampedModel):  # fixed spelling
+    title = models.CharField(max_length=200)
+    content = models.TextField()
 
-
-class TermsAndCondition(models.Model):
-    title = models.CharField(max_length=100)
-    description = models.TextField()
-    created_on = models.DateTimeField(auto_now_add=True)
-    updated_on = models.DateTimeField(auto_now=True)
+class TermsAndConditions(TimestampedModel):
+    title = models.CharField(max_length=200)
+    content = models.TextField()
