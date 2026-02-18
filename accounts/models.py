@@ -1,9 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils import timezone
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from .manager import UserManager
 import uuid
+
 
 class TimestampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -40,8 +42,11 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel, SoftDeletableMo
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER)
 
-    otp = models.CharField(max_length=6, blank=True, null=True)
-    otp_expires_at = models.DateTimeField(blank=True, null=True)
+    phone_verified = models.BooleanField(default=False)
+    phone_verified_at = models.DateTimeField(null=True, blank=True)
+
+    email_verified = models.BooleanField(default=False)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -52,7 +57,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel, SoftDeletableMo
     objects = UserManager()  # your existing manager
 
     USERNAME_FIELD = 'phone'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'role']
+    REQUIRED_FIELDS = ['role']
 
     class Meta:
         verbose_name_plural = "Users"
@@ -60,3 +65,23 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel, SoftDeletableMo
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.role})"
+
+
+class EmailOTP(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="email_otps")
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    attempts = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name_plural = "OTP"
+        indexes = [
+            models.Index(fields=["user", "is_used"]),
+            models.Index(fields=["expires_at"]),
+        ]
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
