@@ -12,10 +12,9 @@ from utils.common import send_otp
 from .models import User, EmailOTP
 from .serializers import *
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-
-
+from driver.serializers import *
 from .serializers import SendEmailOTPSerializer, VerifyEmailOTPSerializer
-
+from driver.models import Driver
 reset_token_generator = PasswordResetTokenGenerator()
 
 def _jwt_for_user(user: User):
@@ -33,6 +32,16 @@ class SignupView(APIView):
             ser = SignupSerializer(data=request.data)
             ser.is_valid(raise_exception=True)
             user = ser.save()
+            if user.role == "driver":
+                driver_data = request.data.copy()
+
+                # Remove fields that belong to User (avoid serializer noise)
+                for k in ["first_name", "last_name", "email", "phone", "role", "password"]:
+                    driver_data.pop(k, None)
+
+                driver_ser = DriverSerializer(data=driver_data)
+                driver_ser.is_valid(raise_exception=True)
+                driver_ser.save(user=user)
             sent_email,otp = send_otp(user)
             if not sent_email:
                     return Response({"status": "error", "message": "Something went wrong, please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -58,16 +67,19 @@ class LoginView(APIView):
 
 class SentEmailOTP(APIView):
     def post(self, request):
-        email = request.data.get('email')
         try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({"status":"error","message": "User not found."}, status=404)
-        sent_email, otp = send_otp(user)
-        if not sent_email:
-            return Response({"status":"error","message": "Something went wrong, please try again later."}, status=500)
-        EmailOTP.objects.create(user=user, code_hash=otp, expires_at=timezone.now() + timezone.timedelta(minutes=10))
-        return Response({"status":"success","message": "OTP sent to your email for password reset."}, status=200)
+            email = request.data.get('email')
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response({"status":"error","message": "User not found."}, status=404)
+            sent_email, otp = send_otp(user)
+            if not sent_email:
+                return Response({"status":"error","message": "Something went wrong, please try again later."}, status=500)
+            EmailOTP.objects.create(user=user, code_hash=otp, expires_at=timezone.now() + timezone.timedelta(minutes=10))
+            return Response({"status":"success","message": "OTP sent to your email for password reset."}, status=200)
+        except Exception as e:
+            return Response({"status":"error","message": str(e)}, status=400)
 
 
 
@@ -77,23 +89,26 @@ class VerifyEmail(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
-        otp = request.data.get('otp')
-        user = get_object_or_404(User, email=email)
-        get_otp = EmailOTP.objects.filter(user=user, code_hash=otp, is_used=False).first()
-        if not get_otp:
-            return Response({"status": "error","detail": "Invalid or expired OTP."}, status=400)
-        if get_otp.expires_at < timezone.now():
-            return Response({"status": "error","detail": "OTP has expired."}, status=400)
-        user.is_active = True
-        user.email_verified = True
-        user.email_verified_at = timezone.now()
-        user.save(update_fields=["is_active"])
-        get_otp.is_used = True
-        get_otp.save(update_fields=["is_used"])
-        refresh = RefreshToken.for_user(user)
-        access_token =  refresh.access_token
-        return Response({"status": "success","message": "Email verified successfully.", "access_token": access_token}, status=200)
+        try:
+            email = request.data.get('email')
+            otp = request.data.get('otp')
+            user = get_object_or_404(User, email=email)
+            get_otp = EmailOTP.objects.filter(user=user, code_hash=otp, is_used=False).first()
+            if not get_otp:
+                return Response({"status": "error","detail": "Invalid or expired OTP."}, status=400)
+            if get_otp.expires_at < timezone.now():
+                return Response({"status": "error","detail": "OTP has expired."}, status=400)
+            user.is_active = True
+            user.email_verified = True
+            user.email_verified_at = timezone.now()
+            user.save(update_fields=["is_active"])
+            get_otp.is_used = True
+            get_otp.save(update_fields=["is_used"])
+            refresh = RefreshToken.for_user(user)
+            access_token =  refresh.access_token
+            return Response({"status": "success","message": "Email verified successfully.", "access_token": access_token}, status=200)
+        except Exception as e:
+            return Response({"status": "error","detail": str(e)}, status=400)
 
 
 
@@ -103,32 +118,38 @@ class ResetPasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        ser = ResetPasswordSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
+        try:
+            ser = ResetPasswordSerializer(data=request.data)
+            ser.is_valid(raise_exception=True)
 
-        user = request.user
-        new_password = ser.validated_data["new_password"]
-        confirm_password = ser.validated_data["confirm_password"]
+            user = request.user
+            new_password = ser.validated_data["new_password"]
+            confirm_password = ser.validated_data["confirm_password"]
 
-        if not new_password == confirm_password:
-            return Response({"status": "error","detail": "Passwords do not match."}, status=400)
+            if not new_password == confirm_password:
+                return Response({"status": "error","detail": "Passwords do not match."}, status=400)
 
-        user.set_password(ser.validated_data["new_password"])
-        user.save(update_fields=["password"])
-        return Response({"status": "success","message": "Password reset successful."})
+            user.set_password(ser.validated_data["new_password"])
+            user.save(update_fields=["password"])
+            return Response({"status": "success","message": "Password reset successful."})
+        except Exception as e:
+            return Response({"status": "error","detail": str(e)}, status=400)
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        ser = ChangePasswordSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        user = request.user
-        if not user.check_password(ser.validated_data["old_password"]):
-            return Response({"status": "error","detail": "Old password is incorrect."}, status=400)
-        user.set_password(ser.validated_data["new_password"])
-        user.save(update_fields=["password"])
-        return Response({"status": "success","message": "Password changed successfully."})
+        try:
+            ser = ChangePasswordSerializer(data=request.data)
+            ser.is_valid(raise_exception=True)
+            user = request.user
+            if not user.check_password(ser.validated_data["old_password"]):
+                return Response({"status": "error","detail": "Old password is incorrect."}, status=400)
+            user.set_password(ser.validated_data["new_password"])
+            user.save(update_fields=["password"])
+            return Response({"status": "success","message": "Password changed successfully."})
+        except Exception as e:
+            return Response({"status": "error","detail": str(e)}, status=400)
 
 
 
@@ -136,50 +157,58 @@ class SendPhoneOTPView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        ser = SendPhoneOTPSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
+        try:
+            ser = SendPhoneOTPSerializer(data=request.data)
+            ser.is_valid(raise_exception=True)
 
-        phone = ser.validated_data["phone"]
-        channel = ser.validated_data["channel"]
+            phone = ser.validated_data["phone"]
+            channel = ser.validated_data["channel"]
 
-        client = get_twilio_client()
-        client.verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID).verifications.create(
-            to=phone,
-            channel=channel,
-        )
+            client = get_twilio_client()
+            client.verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID).verifications.create(
+                to=phone,
+                channel=channel,
+            )
 
-        return Response({"status": "success","message": "OTP sent."}, status=status.HTTP_200_OK)
+            return Response({"status": "success","message": "OTP sent."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error","detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class VerifyPhoneOTPView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        ser = VerifyPhoneOTPSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
+        try:
+            ser = VerifyPhoneOTPSerializer(data=request.data)
+            ser.is_valid(raise_exception=True)
 
-        phone = ser.validated_data["phone"]
-        code = ser.validated_data["code"]
+            phone = ser.validated_data["phone"]
+            code = ser.validated_data["code"]
 
-        client = get_twilio_client()
-        check = client.verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID).verification_checks.create(
-            to=phone,
-            code=code,
-        )
+            client = get_twilio_client()
+            check = client.verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID).verification_checks.create(
+                to=phone,
+                code=code,
+            )
 
-        # Twilio returns status like: "approved" when correct
-        if check.status != "approved":
-            return Response({"status": "error","detail": "Invalid or expired OTP."}, status=400)
+            # Twilio returns status like: "approved" when correct
+            if check.status != "approved":
+                return Response({"status": "error","detail": "Invalid or expired OTP."}, status=400)
 
-        # Mark verified (if user exists)
-        user = User.objects.filter(phone=phone).first()
-        if user:
-            user.phone_verified = True
-            user.phone_verified_at = timezone.now()
-            user.save(update_fields=["phone_verified", "phone_verified_at"])
-        refresh = RefreshToken.for_user(user)
-        access_token =  refresh.access_token
-        return Response({"status": "success","message": "Phone verified successfully.", "access_token": access_token}, status=200)
+            # Mark verified (if user exists)
+            user = User.objects.filter(phone=phone).first()
+            print(user)
+            if user:
+                user.is_active = True
+                user.phone_verified = True
+                user.phone_verified_at = timezone.now()
+                user.save(update_fields=["phone_verified", "phone_verified_at","is_active"])
+            refresh = RefreshToken.for_user(user)
+            access_token =  refresh.access_token
+            return Response({"status": "success","message": "Phone verified successfully.", "access_token": access_token}, status=200)
+        except Exception as e:
+            return Response({"status": "error","detail": str(e)}, status=400)
 
 
 
@@ -189,19 +218,43 @@ class MyProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({
-            "status": "success",
-            "data":UserProfileSerializer(request.user).data})
+        try:
+            return Response({
+                "status": "success",
+                "data":UserProfileSerializer(request.user).data})
+        except Exception as e:
+            return Response({"status": "error","detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 
     def patch(self, request):
-        ser = UserProfileSerializer(request.user, data=request.data, partial=True)
-        ser.is_valid(raise_exception=True)
-        ser.save()
-        return Response({"status": "success","message": "Profile updated successfully.","data":UserProfileSerializer(request.user).data})
+        try:
+            user = request.user
+            ser = UserProfileSerializer(request.user, data=request.data, partial=True)
+            ser.is_valid(raise_exception=True)
+            ser.save()
+
+            if user.role == "driver":
+                driver_data = request.data.copy()
+                # Remove fields that belong to User (avoid serializer noise)
+                for k in ["first_name", "last_name", "email", "phone", "role", "password"]:
+                    driver_data.pop(k, None)
+                driver_ser = DriverUpdateSerializer(request.user,data=driver_data, partial = True)
+                driver_ser.is_valid(raise_exception=True)
+                driver_ser.save()
+                return Response({"status": "success","message": "Profile updated successfully.","data":DriverUpdateSerializer(request.user).data})
+            # elif user.role == "provider":
+            #     ser = UserProfileSerializer(request.user, data=request.data, partial=True)
+            #     ser.is_valid(raise_exception=True)
+            #     ser.save()
+            return Response({"status": "success","message": "Profile updated successfully.","data":UserProfileSerializer(request.user).data})
+        except Exception as e:
+            return Response({"status": "error","detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 
     def delete(self, request):
-        request.user.delete()
-        return Response({"status": "success","message": "Account deleted successfully."})
+        try:
+            request.user.delete()
+            return Response({"status": "success","message": "Account deleted successfully."})
+        except Exception as e:
+            return Response({"status": "error","detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     

@@ -1,20 +1,25 @@
 from django.db import models
-from accounts.models import User, TimestampedModel, SoftDeletableModel
+from accounts.models import TimestampedModel, SoftDeletableModel, User
+from django.conf import settings
 
 class Driver(TimestampedModel, SoftDeletableModel):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='driver_profile')
-    
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="driver_profile"
+    )
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_deliveries = models.PositiveIntegerField(default=0)
     total_online_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     
     address_text = models.TextField(blank=True)
     police_record = models.ImageField(upload_to='police_records/', null=True, blank=True)
+    proof_of_address = models.ImageField(upload_to='address_records/', null=True, blank=True)
     
     location_lat = models.FloatField(null=True, blank=True)
     location_long = models.FloatField(null=True, blank=True)
     
-    payment_frequency = models.CharField(max_length=20, choices=[('weekly','Weekly'),('biweekly','Bi-weekly'),('monthly','Monthly')])
+    payment_frequency = models.CharField(max_length=20, choices=[('weekly','Weekly'),('biweekly','Bi-weekly'),('monthly','Monthly')], default='monthly')
     
     total_rating = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     rating_count = models.PositiveIntegerField(default=0)
@@ -41,8 +46,8 @@ class Document(TimestampedModel):
     driver = models.OneToOneField(Driver, on_delete=models.CASCADE, related_name='documents')
     driving_license_front = models.ImageField(upload_to='licenses/')
     driving_license_back = models.ImageField(upload_to='licenses/')
-    national_id_front = models.ImageField(upload_to='national_ids/')
-    national_id_back = models.ImageField(upload_to='national_ids/')
+    national_id_front = models.ImageField(upload_to='national_ids/',null=True, blank=True)
+    national_id_back = models.ImageField(upload_to='national_ids/',null=True, blank=True)
     vehicle_registration = models.ImageField(upload_to='reg_documents/', null=True, blank=True)
 
 # Rating stays in driver/models.py (or move to order if you prefer)
