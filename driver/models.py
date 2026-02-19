@@ -2,12 +2,7 @@ from django.db import models
 from accounts.models import TimestampedModel, SoftDeletableModel, User
 from django.conf import settings
 
-class Driver(TimestampedModel, SoftDeletableModel):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="driver_profile"
-    )
+class Driver(User):
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_deliveries = models.PositiveIntegerField(default=0)
     total_online_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0)
@@ -28,10 +23,10 @@ class Driver(TimestampedModel, SoftDeletableModel):
     is_online = models.BooleanField(default=False, db_index=True)
     is_verified = models.BooleanField(default=False, db_index=True)
     
-    extra_data = models.JSONField(default=dict, blank=True)  # future: preferred areas, etc.
+    extra_data = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
-        return f"Driver: {self.user}"
+        return f"Driver: {self.first_name} {self.last_name} ({self.phone})"
 
 class Vehicle(TimestampedModel):
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='vehicles')
@@ -50,7 +45,6 @@ class Document(TimestampedModel):
     national_id_back = models.ImageField(upload_to='national_ids/',null=True, blank=True)
     vehicle_registration = models.ImageField(upload_to='reg_documents/', null=True, blank=True)
 
-# Rating stays in driver/models.py (or move to order if you prefer)
 class Rating(TimestampedModel):
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='ratings')
     user = models.ForeignKey(User, on_delete=models.CASCADE)

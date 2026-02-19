@@ -28,7 +28,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel, SoftDeletableMo
     class Role(models.TextChoices):
         CUSTOMER = "customer", _("Customer")
         DRIVER = "driver", _("Driver")
-        BUSINESS = "business", _("Business")
+        COMPANY = "company", _("Company")
         ADMIN = "admin", _("Admin")
 
     user_id = models.AutoField(primary_key=True)
@@ -36,7 +36,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel, SoftDeletableMo
 
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    email = models.EmailField(unique=True)
+    email = models.EmailField(null=True, blank=True)
     phone = models.CharField(max_length=15, unique=True)  # e.g. +18761234567
     profile_image = models.ImageField(upload_to='profile_images/', default='profile_images/default.jpg')
 

@@ -85,9 +85,7 @@ class UserAdmin(BaseUserAdmin):
         (_("Personal Info"), {
             "fields": ("first_name", "last_name", "role")
         }),
-        (_("Permissions"), {
-            "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")
-        }),
+        
         (_("Important Dates"), {
             "fields": ("created_at", "updated_at")
         }),

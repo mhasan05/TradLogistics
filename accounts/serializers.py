@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import User
+from driver.models import Driver
+from company.models import Company
 
-class SignupSerializer(serializers.ModelSerializer):
+class UserSignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
@@ -11,8 +13,31 @@ class SignupSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        # user inactive until email is verified
         user = User.objects.create_user(password=password, is_active=False, **validated_data)
+        return user
+    
+class DriverSignupSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = Driver
+        fields = ["phone", "role", "password"]
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = Driver.objects.create_user(password=password, is_active=False, **validated_data)
+        return user
+    
+class CompanySignupSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = Company
+        fields = ["phone", "role", "password","email"]
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = Company.objects.create_user(password=password, is_active=False, **validated_data)
         return user
 
 class LoginSerializer(serializers.Serializer):
@@ -60,7 +85,7 @@ class UserSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        exclude = ["password","is_deleted","deleted_at","is_superuser", "is_staff", "is_active", "date_joined", "last_login", "public_id", "role", "groups", "user_permissions","phone_verified_at","email_verified_at","phone_verified","email_verified"]
+        exclude = ["password","is_deleted","deleted_at","is_superuser", "is_staff", "is_active", "date_joined", "last_login", "public_id", "role", "groups", "user_permissions","phone_verified_at","email_verified_at","phone_verified","email_verified","created_at","updated_at"]
         read_only_fields = [
             "user_id",
             "role",

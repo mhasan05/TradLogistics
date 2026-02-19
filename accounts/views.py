@@ -13,8 +13,9 @@ from .models import User, EmailOTP
 from .serializers import *
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from driver.serializers import *
-from .serializers import SendEmailOTPSerializer, VerifyEmailOTPSerializer
 from driver.models import Driver
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.db import transaction
 reset_token_generator = PasswordResetTokenGenerator()
 
 def _jwt_for_user(user: User):
@@ -26,29 +27,43 @@ def _jwt_for_user(user: User):
 
 class SignupView(APIView):
     permission_classes = [AllowAny]
-
+    @transaction.atomic
     def post(self, request):
         try:
-            ser = SignupSerializer(data=request.data)
+            role = request.data.get("role")
+            if role not in ["customer", "driver", "company", "admin"]:
+                return Response({"status": "error", "message": "Invalid role."},status=status.HTTP_400_BAD_REQUEST)
+            if role == "customer":
+                ser = UserSignupSerializer(data=request.data)
+            elif role == "driver":
+                ser = DriverSignupSerializer(data=request.data)
+            elif role == "company":
+                ser = CompanySignupSerializer(data=request.data)
             ser.is_valid(raise_exception=True)
             user = ser.save()
-            if user.role == "driver":
-                driver_data = request.data.copy()
-
-                # Remove fields that belong to User (avoid serializer noise)
-                for k in ["first_name", "last_name", "email", "phone", "role", "password"]:
-                    driver_data.pop(k, None)
-
-                driver_ser = DriverSerializer(data=driver_data)
-                driver_ser.is_valid(raise_exception=True)
-                driver_ser.save(user=user)
-            sent_email,otp = send_otp(user)
+            if getattr(user, "email_verified", False) is False and user.is_active is True:
+                user.is_active = False
+                user.save(update_fields=["is_active"])
+            EmailOTP.objects.filter(user=user, is_used=False).update(is_used=True)
+            sent_email, otp_code = send_otp(user)
             if not sent_email:
-                    return Response({"status": "error", "message": "Something went wrong, please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            EmailOTP.objects.create(user=user, code_hash=otp, expires_at=timezone.now() + timezone.timedelta(minutes=10))
-            return Response({"status": "success", "message": "Account created successfully. Please verify your email."}, status=status.HTTP_201_CREATED)
+                return Response(
+                    {"status": "error", "message": "Could not send OTP. Please try again later."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            EmailOTP.objects.create(user=user, code_hash=otp_code, expires_at=timezone.now() + timezone.timedelta(minutes=10))
+            return Response(
+                {
+                    "status": "success",
+                    "message": "Account created successfully. OTP sent to your email."
+                },
+                status=status.HTTP_201_CREATED
+            )
         except Exception as e:
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class LoginView(APIView):
@@ -105,8 +120,8 @@ class VerifyEmail(APIView):
             get_otp.is_used = True
             get_otp.save(update_fields=["is_used"])
             refresh = RefreshToken.for_user(user)
-            access_token =  refresh.access_token
-            return Response({"status": "success","message": "Email verified successfully.", "access_token": access_token}, status=200)
+            token =  str(refresh.access_token)
+            return Response({"status": "success","message": "Email verified successfully.", "access_token": token}, status=200)
         except Exception as e:
             return Response({"status": "error","detail": str(e)}, status=400)
 
@@ -198,7 +213,6 @@ class VerifyPhoneOTPView(APIView):
 
             # Mark verified (if user exists)
             user = User.objects.filter(phone=phone).first()
-            print(user)
             if user:
                 user.is_active = True
                 user.phone_verified = True
@@ -216,6 +230,7 @@ class VerifyPhoneOTPView(APIView):
 
 class MyProfileView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         try:
@@ -229,26 +244,35 @@ class MyProfileView(APIView):
     def patch(self, request):
         try:
             user = request.user
-            ser = UserProfileSerializer(request.user, data=request.data, partial=True)
-            ser.is_valid(raise_exception=True)
-            ser.save()
-
+            # Update common user fields
+            
+            if user.role == "customer":
+                user_ser = UserProfileSerializer(user, data=request.data, partial=True)
+                user_ser.is_valid(raise_exception=True)
+                user_ser.save()
+                return Response({
+                    "status": "success",
+                    "message": "Driver profile updated successfully.",
+                    "data": DriverUpdateSerializer(driver).data
+                }, status=status.HTTP_200_OK)
             if user.role == "driver":
-                driver_data = request.data.copy()
-                # Remove fields that belong to User (avoid serializer noise)
-                for k in ["first_name", "last_name", "email", "phone", "role", "password"]:
-                    driver_data.pop(k, None)
-                driver_ser = DriverUpdateSerializer(request.user,data=driver_data, partial = True)
+                driver = get_object_or_404(Driver, user_id=user.user_id)
+                driver_ser = DriverUpdateSerializer(driver, data=request.data, partial=True)
                 driver_ser.is_valid(raise_exception=True)
                 driver_ser.save()
-                return Response({"status": "success","message": "Profile updated successfully.","data":DriverUpdateSerializer(request.user).data})
-            # elif user.role == "provider":
-            #     ser = UserProfileSerializer(request.user, data=request.data, partial=True)
-            #     ser.is_valid(raise_exception=True)
-            #     ser.save()
-            return Response({"status": "success","message": "Profile updated successfully.","data":UserProfileSerializer(request.user).data})
+                driver.refresh_from_db()
+                return Response({
+                    "status": "success",
+                    "message": "Driver profile updated successfully.",
+                    "data": DriverUpdateSerializer(driver).data
+                }, status=status.HTTP_200_OK)
+            return Response({
+                "status": "success",
+                "message": "Profile updated successfully.",
+                "data": UserProfileSerializer(user).data
+            }, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"status": "error","detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"status": "error", "detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 
     def delete(self, request):
