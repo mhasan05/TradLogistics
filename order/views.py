@@ -9,14 +9,7 @@ from rest_framework import status
 from accounts.models import User
 from driver.models import Driver
 from .models import Delivery, DeliveryRating, DeliveryTip
-from .serializers import (
-    DeliveryCreateSerializer,
-    DeliveryListSerializer,
-    DeliveryDetailSerializer,
-    DeliveryStatusSerializer,
-    DeliveryRatingCreateSerializer,
-    DeliveryTipCreateSerializer,
-)
+from .serializers import *
 
 
 def _make_pin(length=4):
@@ -52,7 +45,7 @@ class DeliveryListCreateAPIView(APIView):
 
     def get(self, request):
         qs = Delivery.objects.filter(customer=request.user).order_by("-id")
-        return Response(DeliveryListSerializer(qs, many=True).data, status=200)
+        return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
 
     @transaction.atomic
     def post(self, request):

@@ -83,7 +83,7 @@ class UserAdmin(BaseUserAdmin):
             "fields": ("phone", "email", "password")
         }),
         (_("Personal Info"), {
-            "fields": ("first_name", "last_name", "role")
+            "fields": ("first_name", "last_name", "role","is_active")
         }),
         
         (_("Important Dates"), {

@@ -3,6 +3,7 @@ from accounts.models import TimestampedModel, SoftDeletableModel, User
 from django.conf import settings
 
 class Driver(User):
+    d_type = models.CharField(max_length=20, choices=[('general','general'),('gas','gas')], default='general')
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_deliveries = models.PositiveIntegerField(default=0)
     total_online_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0)
