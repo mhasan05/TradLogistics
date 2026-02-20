@@ -14,6 +14,8 @@ from .serializers import *
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from driver.serializers import *
 from driver.models import Driver
+from company.models import Company
+from company.serializers import *
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 reset_token_generator = PasswordResetTokenGenerator()
@@ -244,8 +246,7 @@ class MyProfileView(APIView):
     def patch(self, request):
         try:
             user = request.user
-            # Update common user fields
-            
+            print(user.role)
             if user.role == "customer":
                 user_ser = UserProfileSerializer(user, data=request.data, partial=True)
                 user_ser.is_valid(raise_exception=True)
@@ -253,24 +254,28 @@ class MyProfileView(APIView):
                 return Response({
                     "status": "success",
                     "message": "Driver profile updated successfully.",
-                    "data": DriverUpdateSerializer(driver).data
+                    "data": UserProfileSerializer(user).data
                 }, status=status.HTTP_200_OK)
-            if user.role == "driver":
+            elif user.role == "driver":
                 driver = get_object_or_404(Driver, user_id=user.user_id)
-                driver_ser = DriverUpdateSerializer(driver, data=request.data, partial=True)
-                driver_ser.is_valid(raise_exception=True)
-                driver_ser.save()
-                driver.refresh_from_db()
+                user_ser = DriverUpdateSerializer(driver, data=request.data, partial=True)
+                user_ser.is_valid(raise_exception=True)
+                user_ser.save()
                 return Response({
                     "status": "success",
                     "message": "Driver profile updated successfully.",
                     "data": DriverUpdateSerializer(driver).data
                 }, status=status.HTTP_200_OK)
-            return Response({
-                "status": "success",
-                "message": "Profile updated successfully.",
-                "data": UserProfileSerializer(user).data
-            }, status=status.HTTP_200_OK)
+            elif user.role == "company":
+                company = get_object_or_404(Company, user_id=user.user_id)
+                user_ser = CompanyUpdateSerializer(company, data=request.data, partial=True)
+                user_ser.is_valid(raise_exception=True)
+                user_ser.save()
+                return Response({
+                    "status": "success",
+                    "message": "Company profile updated successfully.",
+                    "data": CompanyUpdateSerializer(company).data
+                }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "error", "detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
