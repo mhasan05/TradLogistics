@@ -48,6 +48,6 @@ class Document(TimestampedModel):
 class Rating(TimestampedModel):
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='ratings')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    order = models.ForeignKey('order.Order', on_delete=models.CASCADE)
+    order = models.ForeignKey('order.Delivery', on_delete=models.CASCADE)
     rating = models.DecimalField(max_digits=3, decimal_places=2)
     review = models.TextField(blank=True)

@@ -85,7 +85,39 @@ class UserSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        exclude = ["password","is_deleted","deleted_at","is_superuser", "is_staff", "is_active", "date_joined", "last_login", "public_id", "role", "groups", "user_permissions","phone_verified_at","email_verified_at","phone_verified","email_verified","created_at","updated_at"]
+        exclude = ["password","is_deleted","deleted_at","is_superuser", "is_staff", "is_active", "date_joined", "last_login", "public_id", "groups", "user_permissions","phone_verified_at","email_verified_at","phone_verified","email_verified","created_at","updated_at"]
+        read_only_fields = [
+            "user_id",
+            "role",
+            "is_active",
+            "phone_verified",
+            "phone_verified_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = read_only_fields
+
+
+class DriverProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Driver
+        exclude = ["password","is_deleted","deleted_at","is_superuser", "is_staff", "is_active", "date_joined", "last_login", "public_id", "groups", "user_permissions","phone_verified_at","email_verified_at","phone_verified","email_verified","created_at","updated_at"]
+        read_only_fields = [
+            "user_id",
+            "role",
+            "is_active",
+            "phone_verified",
+            "phone_verified_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = read_only_fields
+
+
+class CompanyProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        exclude = ["password","is_deleted","deleted_at","is_superuser", "is_staff", "is_active", "date_joined", "last_login", "public_id", "groups", "user_permissions","phone_verified_at","email_verified_at","phone_verified","email_verified","created_at","updated_at"]
         read_only_fields = [
             "user_id",
             "role",

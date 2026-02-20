@@ -1,6 +1,6 @@
 from django.db import models
 from driver.models import Driver
-from order.models import Order
+from order.models import Delivery
 from accounts.models import TimestampedModel
 from django.utils.translation import gettext_lazy as _
 
@@ -22,7 +22,7 @@ class Transaction(TimestampedModel):
         DRIVER_PAYOUT = "driver_payout", _("Driver Payout")
         REFUND = "refund", _("Refund")
 
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True)
+    order = models.ForeignKey(Delivery, on_delete=models.SET_NULL, null=True, blank=True)
     driver = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     transaction_type = models.CharField(max_length=20, choices=Type.choices)

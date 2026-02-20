@@ -8,4 +8,4 @@ class Notification(TimestampedModel):
     message = models.TextField()
     is_read = models.BooleanField(default=False, db_index=True)
     type = models.CharField(max_length=50, choices=[('order','Order Update'),('chat','New Message'),('promo','Promotion')])
-    related_order = models.ForeignKey('order.Order', null=True, blank=True, on_delete=models.SET_NULL)
+    related_order = models.ForeignKey('order.Delivery', null=True, blank=True, on_delete=models.SET_NULL)

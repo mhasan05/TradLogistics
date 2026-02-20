@@ -235,10 +235,23 @@ class MyProfileView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
+        user = request.user
         try:
-            return Response({
-                "status": "success",
-                "data":UserProfileSerializer(request.user).data})
+            if user.role == "customer" or user.role == "admin":
+                return Response({
+                    "status": "success",
+                    "data":UserProfileSerializer(request.user).data})
+            elif user.role == "driver":
+                driver = get_object_or_404(Driver, user_id=user.user_id)
+                return Response({
+                    "status": "success",
+                    "data":DriverProfileSerializer(driver).data})
+            elif user.role == "company":
+                company = get_object_or_404(Company, user_id=user.user_id)
+                return Response({
+                    "status": "success",
+                    "data":CompanyProfileSerializer(company).data})
+
         except Exception as e:
             return Response({"status": "error","detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -246,8 +259,7 @@ class MyProfileView(APIView):
     def patch(self, request):
         try:
             user = request.user
-            print(user.role)
-            if user.role == "customer":
+            if user.role == "customer" or user.role == "admin":
                 user_ser = UserProfileSerializer(user, data=request.data, partial=True)
                 user_ser.is_valid(raise_exception=True)
                 user_ser.save()
