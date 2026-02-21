@@ -223,6 +223,12 @@ class DriverUpdateDeliveryStatusAPIView(APIView):
 
         driver = _get_driver(request.user)
         delivery = get_object_or_404(Delivery, pk=pk, driver=driver)
+        pin = request.data.get("pin")
+        req_status = request.data.get("status")
+        if req_status == Delivery.Status.DELIVERED and not pin:
+            return Response({"detail": "Invalid pin."}, status=400)
+        if req_status == Delivery.Status.DELIVERED and pin and delivery.pin != pin:
+            return Response({"detail": "Invalid pin."}, status=400)
 
         ser = DeliveryStatusSerializer(data=request.data)
         ser.is_valid(raise_exception=True)

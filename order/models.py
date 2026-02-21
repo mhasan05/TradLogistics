@@ -44,15 +44,15 @@ class Delivery(TimestampedModel, SoftDeletableModel):
     driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_deliveries")
 
     service_type = models.CharField(max_length=30, choices=ServiceType.choices)
-    vehicle_type = models.CharField(max_length=20, choices=VehicleType.choices)
+    vehicle_type = models.CharField(max_length=20, choices=VehicleType.choices,null=True, blank=True)
 
-    pickup_address = models.CharField(max_length=255)
-    pickup_lat = models.FloatField()
-    pickup_lng = models.FloatField()
+    pickup_address = models.CharField(max_length=255,null=True, blank=True)
+    pickup_lat = models.FloatField(null=True, blank=True)
+    pickup_lng = models.FloatField(null=True, blank=True)
 
-    dropoff_address = models.CharField(max_length=255)
-    dropoff_lat = models.FloatField()
-    dropoff_lng = models.FloatField()
+    dropoff_address = models.CharField(max_length=255,null=True, blank=True)
+    dropoff_lat = models.FloatField(null=True, blank=True)
+    dropoff_lng = models.FloatField(null=True, blank=True)
 
     weight = models.FloatField(null=True, blank=True)
     description = models.TextField(blank=True)
@@ -65,6 +65,9 @@ class Delivery(TimestampedModel, SoftDeletableModel):
     payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
 
     price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    service_data = models.JSONField(default=dict, blank=True)
+    price_breakdown = models.JSONField(default=dict, blank=True)
 
     verification_pin = models.CharField(max_length=6, blank=True)
 

@@ -3,7 +3,19 @@ from django.utils import timezone
 from .models import Delivery, DeliveryRating, DeliveryTip
 from driver.models import *
 
+
+def _abs_file_url(field_file):
+    """
+    Safe file URL getter for ImageField/FileField
+    """
+    try:
+        return field_file.url if field_file else None
+    except Exception:
+        return None
+
 class DeliveryCreateSerializer(serializers.ModelSerializer):
+    service_data = serializers.JSONField(required=False, default=dict)
+
     class Meta:
         model = Delivery
         fields = [
@@ -18,12 +30,73 @@ class DeliveryCreateSerializer(serializers.ModelSerializer):
             "fragile",
             "scheduled_at",
             "payment_method",
+            "service_data",
         ]
 
     def validate_scheduled_at(self, value):
         if value and value < timezone.now():
             raise serializers.ValidationError("scheduled_at cannot be in the past.")
         return value
+
+    def validate(self, attrs):
+        service_type = attrs.get("service_type")
+        service_data = attrs.get("service_data") or {}
+
+        # -------------------------
+        # pickup_delivery rules
+        # -------------------------
+        if service_type == Delivery.ServiceType.PICKUP:
+            required = ["vehicle_type", "dropoff_address", "dropoff_lat", "dropoff_lng"]
+            missing = [f for f in required if not attrs.get(f)]
+            if missing:
+                raise serializers.ValidationError({f: "This field is required for pickup_delivery." for f in missing})
+
+        # -------------------------
+        # cooking_gas rules
+        # -------------------------
+        elif service_type == Delivery.ServiceType.GAS:
+            # Gas usually needs only delivery address (pickup fields act as delivery address)
+            gas = service_data.get("gas", {})
+
+            required = ["cylinder_size", "brand", "transaction_type", "delivery_speed"]
+            missing = [k for k in required if not gas.get(k)]
+            if missing:
+                raise serializers.ValidationError(
+                    {"service_data": {"gas": f"Missing fields: {', '.join(missing)}"}}
+                )
+
+            # Gas doesn't need these base fields
+            attrs["vehicle_type"] = attrs.get("vehicle_type") or ""
+            attrs["dropoff_address"] = attrs.get("dropoff_address") or ""
+            attrs["dropoff_lat"] = attrs.get("dropoff_lat")
+            attrs["dropoff_lng"] = attrs.get("dropoff_lng")
+
+        # -------------------------
+        # wrecker rules
+        # -------------------------
+        elif service_type == Delivery.ServiceType.WRECKER:
+            # wrecker needs pickup + dropoff + vehicle_type maybe fixed = wrecker
+            required = ["dropoff_address", "dropoff_lat", "dropoff_lng"]
+            missing = [f for f in required if not attrs.get(f)]
+            if missing:
+                raise serializers.ValidationError({f: "This field is required for wrecker." for f in missing})
+
+            # if you want to force vehicle_type = wrecker:
+            attrs["vehicle_type"] = Delivery.VehicleType.WRECKER
+
+        # -------------------------
+        # removal_truck rules
+        # -------------------------
+        elif service_type == Delivery.ServiceType.REMOVAL:
+            required = ["dropoff_address", "dropoff_lat", "dropoff_lng"]
+            missing = [f for f in required if not attrs.get(f)]
+            if missing:
+                raise serializers.ValidationError({f: "This field is required for removal_truck." for f in missing})
+
+            # if you want to force:
+            attrs["vehicle_type"] = Delivery.VehicleType.TRUCK
+
+        return attrs
 
 
 class DeliveryListSerializer(serializers.ModelSerializer):
@@ -45,6 +118,8 @@ class DeliveryListSerializer(serializers.ModelSerializer):
             "price",
             "customer",
             "driver",
+            "price_breakdown",
+            "service_data",
             "created_at",
             "updated_at",
         ]
