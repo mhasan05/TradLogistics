@@ -20,7 +20,7 @@ def _ensure_role(user, role: str):
     return getattr(user, "role", None) == role
 
 
-def _get_driver_for_user(user: User) -> Driver:
+def _get_driver(user: User) -> Driver:
     """
     Works for:
     1) DriverProfile with OneToOneField(User) named 'user'
@@ -73,6 +73,38 @@ class DeliveryListCreateAPIView(APIView):
         )
 
 
+class OngoingDeliveryListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role == "customer":
+            qs = Delivery.objects.filter(customer=request.user).exclude(
+                status__in=[Delivery.Status.DELIVERED, Delivery.Status.CANCELLED]
+            ).order_by("-id")
+        elif user.role == "driver":
+            driver = _get_driver(user)
+            qs = Delivery.objects.filter(driver=driver).exclude(
+                status__in=[Delivery.Status.DELIVERED, Delivery.Status.CANCELLED]
+            ).order_by("-id")
+        else:
+            return Response({"detail": "Invalid role."}, status=403)
+        return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
+    
+class PastDeliveryListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role == "customer":
+            qs = Delivery.objects.filter(customer=request.user,status=Delivery.Status.DELIVERED).order_by("-id")
+        elif user.role == "driver":
+            driver = _get_driver(user)
+            qs = Delivery.objects.filter(driver=driver,status=Delivery.Status.DELIVERED).order_by("-id")
+        else:
+            return Response({"detail": "Invalid role."}, status=403)
+        return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
+
 class DeliveryDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -83,7 +115,7 @@ class DeliveryDetailAPIView(APIView):
         driver = None
         if _ensure_role(request.user, "driver"):
             try:
-                driver = _get_driver_for_user(request.user)
+                driver = _get_driver(request.user)
             except Exception:
                 driver = None
 
@@ -172,7 +204,7 @@ class DriverAcceptDeliveryAPIView(APIView):
         if not _ensure_role(request.user, "driver"):
             return Response({"detail": "Only drivers can accept."}, status=403)
 
-        driver = _get_driver_for_user(request.user)
+        driver = _get_driver(request.user)
         delivery = get_object_or_404(Delivery, pk=pk, status=Delivery.Status.SEARCHING)
 
         delivery.driver = driver
@@ -189,7 +221,7 @@ class DriverUpdateDeliveryStatusAPIView(APIView):
         if not _ensure_role(request.user, "driver"):
             return Response({"detail": "Only drivers can update status."}, status=403)
 
-        driver = _get_driver_for_user(request.user)
+        driver = _get_driver(request.user)
         delivery = get_object_or_404(Delivery, pk=pk, driver=driver)
 
         ser = DeliveryStatusSerializer(data=request.data)
@@ -232,6 +264,11 @@ class DeliveryRateAPIView(APIView):
 
         ser = DeliveryRatingCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+
+        driver = delivery.driver
+        driver.average_rating = (driver.average_rating * driver.rating_count + ser.validated_data["rating"]) / (driver.rating_count + 1)
+        driver.rating_count += 1
+        driver.save(update_fields=["average_rating", "rating_count"])
 
         DeliveryRating.objects.create(
             delivery=delivery,

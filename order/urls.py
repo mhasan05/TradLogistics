@@ -10,6 +10,11 @@ urlpatterns = [
     path("deliveries/<int:pk>/rate/", DeliveryRateAPIView.as_view(), name="delivery-rate"),
     path("deliveries/<int:pk>/tip/", DeliveryTipAPIView.as_view(), name="delivery-tip"),
 
+
+    # Common
+    path("deliveries/past/", PastDeliveryListAPIView.as_view(), name="delivery-past"),
+    path("deliveries/ongoing/", OngoingDeliveryListAPIView.as_view(), name="delivery-ongoing"),
+
     # Driver
     path("driver/deliveries/available/", DriverAvailableDeliveriesAPIView.as_view(), name="driver-available"),
     path("driver/deliveries/<int:pk>/accept/", DriverAcceptDeliveryAPIView.as_view(), name="driver-accept"),

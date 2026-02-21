@@ -57,7 +57,8 @@ class SignupView(APIView):
             return Response(
                 {
                     "status": "success",
-                    "message": "Account created successfully. OTP sent to your email."
+                    "message": "Account created successfully. OTP sent to your email/phone.",
+                    "otp": otp_code
                 },
                 status=status.HTTP_201_CREATED
             )

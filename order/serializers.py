@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from .models import Delivery, DeliveryRating, DeliveryTip
-
+from driver.models import *
 
 class DeliveryCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,8 +27,8 @@ class DeliveryCreateSerializer(serializers.ModelSerializer):
 
 
 class DeliveryListSerializer(serializers.ModelSerializer):
-    customer_name = serializers.SerializerMethodField()
-    driver_name = serializers.SerializerMethodField()
+    customer = serializers.SerializerMethodField()
+    driver = serializers.SerializerMethodField()
 
     class Meta:
         model = Delivery
@@ -43,24 +43,50 @@ class DeliveryListSerializer(serializers.ModelSerializer):
             "scheduled_at",
             "payment_method",
             "price",
-            "customer_name",
-            "driver_name",
+            "customer",
+            "driver",
             "created_at",
             "updated_at",
         ]
 
-    def get_customer_name(self, obj):
-        return f"{obj.customer.first_name} {obj.customer.last_name}"
+    def get_customer(self, obj):
+        return {
+            "user_id": obj.customer.user_id,
+            "name": f"{obj.customer.first_name} {obj.customer.last_name}",
+            "phone": obj.customer.phone,
+            "profile_image": obj.customer.profile_image.url,
+            
 
-    def get_driver_name(self, obj):
+        }
+
+    def get_driver(self, obj):
+        vehicle = Vehicle.objects.filter(driver=obj.driver).first()
         if not obj.driver:
             return None
-        # If Driver has user:
+
         u = getattr(obj.driver, "user", None)
         if u:
-            return f"{u.first_name} {u.last_name}"
-        # If Driver inherits User:
-        return f"{obj.driver.first_name} {obj.driver.last_name}"
+            return {
+                "user_id": u.user_id,
+                "name": f"{u.first_name} {u.last_name}",
+                "phone": u.phone,
+                "profile_image": obj.customer.profile_image.url,
+                
+            }
+
+        # inheritance Driver(User)
+        return {
+            "user_id": obj.driver.user_id,
+            "name": f"{obj.driver.first_name} {obj.driver.last_name}",
+            "phone": obj.driver.phone,
+            "rating_count": obj.driver.rating_count,
+            "average_rating": obj.driver.average_rating,
+            "vehicle_type": vehicle.vehicle_type if vehicle else None,
+            "brand": vehicle.brand if vehicle else None,
+            "model": vehicle.model if vehicle else None,
+            "color": vehicle.color if vehicle else None,
+            "registration_number": vehicle.registration_number if vehicle else None,
+        }
 
 
 class DeliveryDetailSerializer(serializers.ModelSerializer):
@@ -76,27 +102,38 @@ class DeliveryDetailSerializer(serializers.ModelSerializer):
             "user_id": obj.customer.user_id,
             "name": f"{obj.customer.first_name} {obj.customer.last_name}",
             "phone": obj.customer.phone,
+            "profile_image": obj.customer.profile_image.url,
+            
+
         }
 
     def get_driver(self, obj):
+        vehicle = Vehicle.objects.filter(driver=obj.driver).first()
         if not obj.driver:
             return None
 
         u = getattr(obj.driver, "user", None)
         if u:
             return {
-                "driver_id": obj.driver.pk,
                 "user_id": u.user_id,
                 "name": f"{u.first_name} {u.last_name}",
                 "phone": u.phone,
+                "profile_image": obj.customer.profile_image.url,
+                
             }
 
         # inheritance Driver(User)
         return {
-            "driver_id": obj.driver.pk,
             "user_id": obj.driver.user_id,
             "name": f"{obj.driver.first_name} {obj.driver.last_name}",
             "phone": obj.driver.phone,
+            "rating_count": obj.driver.rating_count,
+            "average_rating": obj.driver.average_rating,
+            "vehicle_type": vehicle.vehicle_type if vehicle else None,
+            "brand": vehicle.brand if vehicle else None,
+            "model": vehicle.model if vehicle else None,
+            "color": vehicle.color if vehicle else None,
+            "registration_number": vehicle.registration_number if vehicle else None,
         }
 
 

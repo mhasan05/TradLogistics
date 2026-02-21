@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import User
-from driver.models import Driver
+from driver.models import *
 from company.models import Company
 
 class UserSignupSerializer(serializers.ModelSerializer):
@@ -99,6 +99,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class DriverProfileSerializer(serializers.ModelSerializer):
+    vehicle = serializers.SerializerMethodField()
     class Meta:
         model = Driver
         exclude = ["password","is_deleted","deleted_at","is_superuser", "is_staff", "is_active", "date_joined", "last_login", "public_id", "groups", "user_permissions","phone_verified_at","email_verified_at","phone_verified","email_verified","created_at","updated_at"]
@@ -112,6 +113,20 @@ class DriverProfileSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = read_only_fields
+
+    def get_vehicle(self, obj):
+        vehicle = Vehicle.objects.filter(driver=obj.user_id).first()
+        if not vehicle:
+            return None
+        return {
+            "vehicle_type": vehicle.vehicle_type,
+            "brand": vehicle.brand,
+            "model": vehicle.model,
+            "color": vehicle.color,
+            "registration_number": vehicle.registration_number,
+            
+
+        }
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
