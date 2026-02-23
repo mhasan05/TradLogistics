@@ -49,8 +49,8 @@ class DeliveryListCreateAPIView(APIView):
 
     @transaction.atomic
     def post(self, request):
-        if not (_ensure_role(request.user, "customer") or _ensure_role(request.user, "business")):
-            return Response({"detail": "Only customer/business can create delivery."}, status=403)
+        if not (_ensure_role(request.user, "customer") or _ensure_role(request.user, "company")):
+            return Response({"detail": "Only customer/company can create delivery."}, status=403)
 
         ser = DeliveryCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -313,3 +313,99 @@ class DeliveryTipAPIView(APIView):
         )
 
         return Response({"status": "success", "message": "Tip sent successfully."}, status=201)
+    
+
+
+TRACKABLE_STATUSES = {
+    Delivery.Status.ACCEPTED,
+    Delivery.Status.DRIVER_ASSIGNED,
+    Delivery.Status.PICKED_UP,
+    Delivery.Status.IN_TRANSIT,
+}
+
+class DeliveryDriverLocationAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        delivery = get_object_or_404(Delivery, id=id)
+
+        # customer can view own delivery; driver can view assigned delivery
+        user = request.user
+        if user.role == "customer" and delivery.customer_id != user.user_id:
+            return Response({"status": "error", "detail": "Not allowed."}, status=403)
+
+        if user.role == "driver":
+            # if your Driver inherits User, delivery.driver_id == user.user_id
+            if not delivery.driver_id or delivery.driver_id != user.user_id:
+                return Response({"status": "error", "detail": "Not allowed."}, status=403)
+
+        if delivery.status not in TRACKABLE_STATUSES:
+            return Response({"status": "error", "detail": "Tracking not available for this delivery."}, status=400)
+
+        if delivery.driver_last_lat is None or delivery.driver_last_lng is None:
+            return Response({"status": "success", "data": {"delivery_id": delivery.id, "location": None}}, status=200)
+
+        driver = delivery.driver
+        driver_name = f"{driver.first_name} {driver.last_name}" if driver else None
+
+        return Response({
+            "status": "success",
+            "data": {
+                "delivery_id": delivery.id,
+                "driver": {
+                    "user_id": driver.user_id if driver else None,
+                    "name": driver_name,
+                    "phone": driver.phone if driver else None,
+                },
+                "location": {
+                    "lat": delivery.driver_last_lat,
+                    "lng": delivery.driver_last_lng,
+                    "heading": delivery.driver_last_heading,
+                    "speed": delivery.driver_last_speed,
+                    "accuracy": delivery.driver_last_accuracy,
+                    "updated_at": delivery.driver_last_updated_at,
+                }
+            }
+        }, status=200)
+
+    def post(self, request, id):
+        delivery = get_object_or_404(Delivery, id=id)
+        user = request.user
+
+        # only driver can update location
+        if user.role != "driver":
+            return Response({"status": "error", "detail": "Only driver can update location."}, status=403)
+
+        if not delivery.driver_id or delivery.driver_id != user.user_id:
+            return Response({"status": "error", "detail": "This delivery is not assigned to you."}, status=403)
+
+        if delivery.status not in TRACKABLE_STATUSES:
+            return Response({"status": "error", "detail": "Tracking not allowed for this status."}, status=400)
+
+        ser = DriverLocationUpdateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        delivery.driver_last_lat = ser.validated_data["lat"]
+        delivery.driver_last_lng = ser.validated_data["lng"]
+        delivery.driver_last_heading = ser.validated_data.get("heading")
+        delivery.driver_last_speed = ser.validated_data.get("speed")
+        delivery.driver_last_accuracy = ser.validated_data.get("accuracy")
+        delivery.driver_last_updated_at = timezone.now()
+        delivery.save(update_fields=[
+            "driver_last_lat", "driver_last_lng",
+            "driver_last_heading", "driver_last_speed", "driver_last_accuracy",
+            "driver_last_updated_at"
+        ])
+
+        # (optional) also broadcast on websocket group here, see websocket section below
+
+        return Response({
+            "status": "success",
+            "message": "Location updated",
+            "data": {
+                "delivery_id": delivery.id,
+                "lat": delivery.driver_last_lat,
+                "lng": delivery.driver_last_lng,
+                "updated_at": delivery.driver_last_updated_at
+            }
+        }, status=status.HTTP_200_OK)

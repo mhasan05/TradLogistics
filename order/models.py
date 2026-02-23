@@ -24,6 +24,9 @@ class Delivery(TimestampedModel, SoftDeletableModel):
         WRECKER = "wrecker"
         REMOVAL = "removal_truck"
         GAS = "cooking_gas"
+        BIKE = "bike"
+        CAR = "car"
+        VAN = "van"
 
     class VehicleType(models.TextChoices):
         CAR = "car"
@@ -70,6 +73,15 @@ class Delivery(TimestampedModel, SoftDeletableModel):
     price_breakdown = models.JSONField(default=dict, blank=True)
 
     verification_pin = models.CharField(max_length=6, blank=True)
+
+
+    driver_last_lat = models.FloatField(null=True, blank=True)
+    driver_last_lng = models.FloatField(null=True, blank=True)
+    driver_last_heading = models.FloatField(null=True, blank=True)
+    driver_last_speed = models.FloatField(null=True, blank=True)
+    driver_last_accuracy = models.FloatField(null=True, blank=True)
+    driver_last_updated_at = models.DateTimeField(null=True, blank=True)
+    estimat_arrival_time = models.DateTimeField(null=True, blank=True)
 
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING)
 

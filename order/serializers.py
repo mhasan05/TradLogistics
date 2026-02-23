@@ -154,6 +154,7 @@ class DeliveryListSerializer(serializers.ModelSerializer):
             "user_id": obj.driver.user_id,
             "name": f"{obj.driver.first_name} {obj.driver.last_name}",
             "phone": obj.driver.phone,
+            "profile_image": obj.driver.profile_image.url,
             "rating_count": obj.driver.rating_count,
             "average_rating": obj.driver.average_rating,
             "vehicle_type": vehicle.vehicle_type if vehicle else None,
@@ -202,6 +203,7 @@ class DeliveryDetailSerializer(serializers.ModelSerializer):
             "user_id": obj.driver.user_id,
             "name": f"{obj.driver.first_name} {obj.driver.last_name}",
             "phone": obj.driver.phone,
+            "profile_image": obj.driver.profile_image.url,
             "rating_count": obj.driver.rating_count,
             "average_rating": obj.driver.average_rating,
             "vehicle_type": vehicle.vehicle_type if vehicle else None,
@@ -236,3 +238,11 @@ class DeliveryTipCreateSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("Amount must be greater than 0.")
         return value
+    
+
+class DriverLocationUpdateSerializer(serializers.Serializer):
+    lat = serializers.FloatField()
+    lng = serializers.FloatField()
+    heading = serializers.FloatField(required=False, allow_null=True)
+    speed = serializers.FloatField(required=False, allow_null=True)
+    accuracy = serializers.FloatField(required=False, allow_null=True)
