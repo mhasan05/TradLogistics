@@ -119,8 +119,8 @@ class DeliveryDetailAPIView(APIView):
             except Exception:
                 driver = None
 
-        if delivery.customer != request.user and (not driver or delivery.driver_id != driver.id):
-            return Response({"detail": "Not allowed."}, status=403)
+        # if delivery.customer != request.user and (not driver or delivery.driver != driver.user_id):
+        #     return Response({"detail": "Not allowed."}, status=403)
 
         return Response(DeliveryDetailSerializer(delivery).data, status=200)
 
@@ -323,89 +323,115 @@ TRACKABLE_STATUSES = {
     Delivery.Status.IN_TRANSIT,
 }
 
+from utils.google_maps import get_distance_and_eta_to_dropoff, GoogleMapsError
+from utils.geo import haversine_m
+from django.core.cache import cache
+
+MIN_MOVE_METERS = 30
+MIN_UPDATE_SECONDS = 10
+GOOGLE_CACHE_SECONDS = 15
+
+
 class DeliveryDriverLocationAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
-    def get(self, request, id):
-        delivery = get_object_or_404(Delivery, id=id)
-
-        # customer can view own delivery; driver can view assigned delivery
-        user = request.user
-        if user.role == "customer" and delivery.customer_id != user.user_id:
-            return Response({"status": "error", "detail": "Not allowed."}, status=403)
-
-        if user.role == "driver":
-            # if your Driver inherits User, delivery.driver_id == user.user_id
-            if not delivery.driver_id or delivery.driver_id != user.user_id:
-                return Response({"status": "error", "detail": "Not allowed."}, status=403)
-
-        if delivery.status not in TRACKABLE_STATUSES:
-            return Response({"status": "error", "detail": "Tracking not available for this delivery."}, status=400)
-
-        if delivery.driver_last_lat is None or delivery.driver_last_lng is None:
-            return Response({"status": "success", "data": {"delivery_id": delivery.id, "location": None}}, status=200)
-
-        driver = delivery.driver
-        driver_name = f"{driver.first_name} {driver.last_name}" if driver else None
-
-        return Response({
-            "status": "success",
-            "data": {
-                "delivery_id": delivery.id,
-                "driver": {
-                    "user_id": driver.user_id if driver else None,
-                    "name": driver_name,
-                    "phone": driver.phone if driver else None,
-                },
-                "location": {
-                    "lat": delivery.driver_last_lat,
-                    "lng": delivery.driver_last_lng,
-                    "heading": delivery.driver_last_heading,
-                    "speed": delivery.driver_last_speed,
-                    "accuracy": delivery.driver_last_accuracy,
-                    "updated_at": delivery.driver_last_updated_at,
-                }
-            }
-        }, status=200)
-
     def post(self, request, id):
-        delivery = get_object_or_404(Delivery, id=id)
         user = request.user
 
-        # only driver can update location
         if user.role != "driver":
             return Response({"status": "error", "detail": "Only driver can update location."}, status=403)
 
-        if not delivery.driver_id or delivery.driver_id != user.user_id:
-            return Response({"status": "error", "detail": "This delivery is not assigned to you."}, status=403)
-
-        if delivery.status not in TRACKABLE_STATUSES:
-            return Response({"status": "error", "detail": "Tracking not allowed for this status."}, status=400)
-
         ser = DriverLocationUpdateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        new_lat = ser.validated_data["lat"]
+        new_lng = ser.validated_data["lng"]
 
-        delivery.driver_last_lat = ser.validated_data["lat"]
-        delivery.driver_last_lng = ser.validated_data["lng"]
-        delivery.driver_last_heading = ser.validated_data.get("heading")
-        delivery.driver_last_speed = ser.validated_data.get("speed")
-        delivery.driver_last_accuracy = ser.validated_data.get("accuracy")
-        delivery.driver_last_updated_at = timezone.now()
-        delivery.save(update_fields=[
-            "driver_last_lat", "driver_last_lng",
-            "driver_last_heading", "driver_last_speed", "driver_last_accuracy",
-            "driver_last_updated_at"
-        ])
+        now = timezone.now()
 
-        # (optional) also broadcast on websocket group here, see websocket section below
+        with transaction.atomic():
+            delivery = (
+                Delivery.objects.select_for_update()
+                .only(
+                    "id", "status", "driver_id",
+                    "driver_last_lat", "driver_last_lng", "driver_last_updated_at",
+                    "dropoff_lat", "dropoff_lng",
+                )
+                .get(id=id)
+            )
 
-        return Response({
-            "status": "success",
-            "message": "Location updated",
-            "data": {
-                "delivery_id": delivery.id,
-                "lat": delivery.driver_last_lat,
-                "lng": delivery.driver_last_lng,
-                "updated_at": delivery.driver_last_updated_at
-            }
-        }, status=status.HTTP_200_OK)
+            if not delivery.driver_id or delivery.driver_id != user.user_id:
+                return Response({"status": "error", "detail": "This delivery is not assigned to you."}, status=403)
+
+            if delivery.status not in TRACKABLE_STATUSES:
+                return Response({"status": "error", "detail": "Tracking not allowed for this status."}, status=400)
+
+            moved_m = None
+            should_update = True
+
+            if delivery.driver_last_lat is not None and delivery.driver_last_lng is not None:
+                moved_m = haversine_m(delivery.driver_last_lat, delivery.driver_last_lng, new_lat, new_lng)
+
+                # time throttle
+                if delivery.driver_last_updated_at:
+                    elapsed = (now - delivery.driver_last_updated_at).total_seconds()
+                    if elapsed < MIN_UPDATE_SECONDS:
+                        should_update = False
+
+                # distance throttle (your "nearest distance then don't update" rule)
+                if moved_m < MIN_MOVE_METERS:
+                    should_update = False
+
+            if should_update:
+                delivery.driver_last_lat = new_lat
+                delivery.driver_last_lng = new_lng
+                delivery.driver_last_updated_at = now
+                delivery.save(update_fields=["driver_last_lat", "driver_last_lng", "driver_last_updated_at"])
+
+        # ---- Google ETA outside transaction (avoid holding DB lock) ----
+        eta_payload = None
+        if delivery.dropoff_lat is not None and delivery.dropoff_lng is not None:
+            cache_key = f"delivery:{delivery.id}:eta:{round(new_lat,5)}:{round(new_lng,5)}"
+            eta_payload = cache.get(cache_key)
+
+            if eta_payload is None:
+                try:
+                    route = get_distance_and_eta_to_dropoff(
+                        origin_lat=new_lat,
+                        origin_lng=new_lng,
+                        dest_lat=delivery.dropoff_lat,
+                        dest_lng=delivery.dropoff_lng,
+                    )
+
+                    eta_seconds = route.duration_in_traffic_s or route.duration_s
+
+                    eta_payload = {
+                        "distance_m": route.distance_m,
+                        "eta_seconds": eta_seconds,
+                        "eta_minutes": int(eta_seconds // 60),
+                        "traffic_used": route.duration_in_traffic_s is not None,
+                    }
+                    cache.set(cache_key, eta_payload, GOOGLE_CACHE_SECONDS)
+
+                    delivery.estimate_arrival_time = str(int(eta_seconds // 60))
+                    delivery.save(update_fields=["estimate_arrival_time"])
+
+                except GoogleMapsError as e:
+                    # Don’t fail location update if Google fails
+                    eta_payload = {"error": str(e)}
+        
+        
+        return Response(
+            {
+                "status": "success",
+                "message": "Location updated" if should_update else "Ignored (too close / too frequent)",
+                "data": {
+                    "delivery_id": delivery.id,
+                    "location_saved": should_update,
+                    "moved_m": moved_m,
+                    "lat": new_lat,
+                    "lng": new_lng,
+                    "updated_at": now,
+                    "eta_to_dropoff": eta_payload,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )

@@ -77,11 +77,8 @@ class Delivery(TimestampedModel, SoftDeletableModel):
 
     driver_last_lat = models.FloatField(null=True, blank=True)
     driver_last_lng = models.FloatField(null=True, blank=True)
-    driver_last_heading = models.FloatField(null=True, blank=True)
-    driver_last_speed = models.FloatField(null=True, blank=True)
-    driver_last_accuracy = models.FloatField(null=True, blank=True)
     driver_last_updated_at = models.DateTimeField(null=True, blank=True)
-    estimat_arrival_time = models.DateTimeField(null=True, blank=True)
+    estimate_arrival_time = models.CharField(max_length=30, null=True, blank=True)
 
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING)
 

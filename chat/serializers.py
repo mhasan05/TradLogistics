@@ -5,15 +5,19 @@ from .models import Conversation, ConversationParticipant, Message
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
+    sender_role = serializers.SerializerMethodField()
     sender_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ["id", "conversation", "sender", "sender_name", "sender_avatar", "text", "created_at"]
+        fields = ["id", "conversation", "sender", "sender_name","sender_role", "sender_avatar", "text", "created_at"]
         read_only_fields = ["id", "created_at", "sender"]
 
     def get_sender_name(self, obj):
         return f"{obj.sender.first_name} {obj.sender.last_name}".strip()
+    
+    def get_sender_role(self, obj):
+        return f"{obj.sender.role}".strip()
 
     def get_sender_avatar(self, obj):
         try:

@@ -120,6 +120,8 @@ class DeliveryListSerializer(serializers.ModelSerializer):
             "driver",
             "price_breakdown",
             "service_data",
+            "driver_last_lat",
+            "driver_last_lng",
             "created_at",
             "updated_at",
         ]
@@ -243,6 +245,3 @@ class DeliveryTipCreateSerializer(serializers.ModelSerializer):
 class DriverLocationUpdateSerializer(serializers.Serializer):
     lat = serializers.FloatField()
     lng = serializers.FloatField()
-    heading = serializers.FloatField(required=False, allow_null=True)
-    speed = serializers.FloatField(required=False, allow_null=True)
-    accuracy = serializers.FloatField(required=False, allow_null=True)
