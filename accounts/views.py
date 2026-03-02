@@ -18,12 +18,15 @@ from company.models import Company
 from company.serializers import *
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
+from django.db.models import Q
 reset_token_generator = PasswordResetTokenGenerator()
 
 def _jwt_for_user(user: User):
     refresh = RefreshToken.for_user(user)
     return {"status": "success","access_token": str(refresh.access_token)}
 
+def _get_user_company(user):
+    return getattr(user, "company", None)
 
 
 
@@ -300,3 +303,60 @@ class MyProfileView(APIView):
         except Exception as e:
             return Response({"status": "error","detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
+
+
+class UserListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        role_filter = request.GET.get("role")
+        qs = User.objects.all().order_by("-user_id")
+        if role_filter == "driver":
+            if user.role == "company":
+                qs = Driver.objects.all().order_by("-user_id")
+                qs = qs.filter(role="driver",driver_company=user)
+                return Response({
+                    "status": "success",
+                    "count": qs.count(),
+                    "data": DriverProfileSerializer(qs, many=True).data
+                }, status=200)
+            elif user.role == "admin":
+                qs = Driver.objects.all().order_by("-user_id")
+                qs = qs.filter(role="driver")
+                return Response({
+                    "status": "success",
+                    "count": qs.count(),
+                    "data": DriverProfileSerializer(qs, many=True).data
+                }, status=200)
+            else:
+                return Response({
+                "status": "error",
+                "detail": "Not allowed."
+            }, status=403)
+        elif role_filter == "company":
+            if user.role == "admin":
+                qs = Company.objects.all().order_by("-user_id")
+                qs = qs.filter(role="company")
+                return Response({
+                    "status": "success",
+                    "count": qs.count(),
+                    "data": CompanyProfileSerializer(qs, many=True).data
+                }, status=200)
+            else:
+                return Response({
+                "status": "error",
+                "detail": "Not allowed."
+            }, status=403)
+        else:
+            if user.role == "admin":
+                return Response({
+                    "status": "success",
+                    "count": qs.count(),
+                    "data": UserProfileSerializer(qs, many=True).data
+                }, status=200)
+            else:
+                return Response({
+                "status": "error",
+                "detail": "Not allowed."
+            }, status=403)

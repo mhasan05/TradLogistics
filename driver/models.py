@@ -1,6 +1,7 @@
 from django.db import models
 from accounts.models import TimestampedModel, SoftDeletableModel, User
 from django.conf import settings
+from company.models import Truck
 
 class Driver(User):
     d_type = models.CharField(max_length=20, choices=[('general','general'),('gas','gas')], default='general')
@@ -11,6 +12,8 @@ class Driver(User):
     address_text = models.TextField(blank=True)
     police_record = models.ImageField(upload_to='police_records/', null=True, blank=True)
     proof_of_address = models.ImageField(upload_to='address_records/', null=True, blank=True)
+
+    driving_license_number =  models.CharField(max_length=100,null=True, blank=True)
     
     location_lat = models.FloatField(null=True, blank=True)
     location_long = models.FloatField(null=True, blank=True)
@@ -20,6 +23,10 @@ class Driver(User):
     total_rating = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     rating_count = models.PositiveIntegerField(default=0)
     average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+
+    assign_truck = models.ForeignKey(Truck, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_truck')
+    driver_company = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='company_driver')
+    availability_status = models.BooleanField(default=True, db_index=True)
     
     is_online = models.BooleanField(default=False, db_index=True)
     is_verified = models.BooleanField(default=False, db_index=True)

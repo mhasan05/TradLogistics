@@ -2,7 +2,22 @@ from django.urls import path
 from .views import *
 
 urlpatterns = [
-    # path("vehicles/", VehicleListCreateAPIView.as_view(), name="vehicle-list-create"),
-    # path("vehicles/<int:pk>/", VehicleDetailAPIView.as_view(), name="vehicle-detail"),
-    # path("documents/", DriverDocumentAPIView.as_view(), name="driver-documents"),
+    # CRUD
+    path("trucks/", TruckListCreateAPIView.as_view()),
+    path("trucks/<uuid:public_id>/", TruckDetailAPIView.as_view()),
+
+    path("trucks/<uuid:public_id>/location/", TruckLocationUpdateAPIView.as_view()),
+
+    path("zones/", ZoneListCreateAPIView.as_view()),
+    path("zones/<int:id>/", ZoneDetailAPIView.as_view()),
+
+    # Assign / unassign
+    path("trucks/<uuid:public_id>/assign-driver/", TruckAssignDriverAPIView.as_view()),
+    path("trucks/<uuid:public_id>/unassign-driver/", TruckUnassignDriverAPIView.as_view()),
+
+    # Inventory
+    path("trucks/<uuid:public_id>/inventory/", TruckInventoryUpdateAPIView.as_view()),
+
+    # Dashboard
+    path("fleet/dashboard/", FleetDashboardAPIView.as_view()),
 ]

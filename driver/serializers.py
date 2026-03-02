@@ -1,11 +1,18 @@
 from rest_framework import serializers
 from .models import Driver, Vehicle, Document, Rating
 from accounts.serializers import UserSerializer
+from company.serializers import TruckSerializer
 class DriverSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    truck_id = serializers.SerializerMethodField()
     class Meta:
         model = Driver
         fields = '__all__'
+
+    def get_truck_id(self, obj):
+        if hasattr(obj, "assign_truck"):
+            return obj.assign_truck.truck_id
+        return None
 
 
 class DriverUpdateSerializer(serializers.ModelSerializer):

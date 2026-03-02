@@ -3,6 +3,9 @@ from django.contrib.auth import authenticate
 from .models import User
 from driver.models import *
 from company.models import Company
+from django.utils import timezone
+from order.models import Delivery
+from django.db.models import Sum
 
 class UserSignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
@@ -100,6 +103,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class DriverProfileSerializer(serializers.ModelSerializer):
     vehicle = serializers.SerializerMethodField()
+    truck_id = serializers.SerializerMethodField()
+    today_total_deliveries = serializers.SerializerMethodField()
+    today_total_earnings = serializers.SerializerMethodField()
     class Meta:
         model = Driver
         exclude = ["password","is_deleted","deleted_at","is_superuser", "is_staff", "is_active", "date_joined", "last_login", "public_id", "groups", "user_permissions","phone_verified_at","email_verified_at","phone_verified","email_verified","created_at","updated_at"]
@@ -113,6 +119,31 @@ class DriverProfileSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = read_only_fields
+
+    def get_truck_id(self, obj):
+        if hasattr(obj, "assign_truck"):
+            return obj.assign_truck.truck_id
+        return None
+    
+    def get_today_total_deliveries(self, obj):
+        today = timezone.now().date()
+
+        return Delivery.objects.filter(
+            driver=obj,
+            status=Delivery.Status.DELIVERED,
+            created_at__date=today
+        ).count()
+
+    def get_today_total_earnings(self, obj):
+        today = timezone.now().date()
+
+        result = Delivery.objects.filter(
+            driver=obj,
+            status=Delivery.Status.DELIVERED,
+            created_at__date=today
+        ).aggregate(total=Sum("price"))
+
+        return result["total"] or 0
 
     def get_vehicle(self, obj):
         vehicle = Vehicle.objects.filter(driver=obj.user_id).first()
@@ -150,3 +181,21 @@ class SendEmailOTPSerializer(serializers.Serializer):
 class VerifyEmailOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(min_length=4, max_length=10)
+
+
+class AdminUserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "user_id",
+            "public_id",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "role",
+            "email_verified",
+            "phone_verified",
+            "is_active",
+            "date_joined",
+        ]

@@ -5,11 +5,13 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-
 from accounts.models import User
 from driver.models import Driver
 from .models import Delivery, DeliveryRating, DeliveryTip
 from .serializers import *
+from django.utils import timezone
+from django.db.models import Count, Sum, DecimalField, Value
+from django.db.models.functions import TruncMonth, Coalesce
 
 
 def _make_pin(length=4):
@@ -435,3 +437,92 @@ class DeliveryDriverLocationAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+
+
+DECIMAL_OUT = DecimalField(max_digits=12, decimal_places=2)
+MONTH_LABELS = {
+    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+    5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
+    9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec",
+}
+
+class CompanyDashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (_ensure_role(request.user, "customer") or _ensure_role(request.user, "company")):
+            return Response({"detail": "Only customer and company can access."}, status=403)
+
+        qs = Delivery.objects.filter(customer=request.user).order_by("-id")
+
+        total_deliveries = qs.count()
+        total_pending = qs.filter(status=Delivery.Status.PENDING).count()
+        total_searching = qs.filter(status=Delivery.Status.SEARCHING).count()
+        total_driver_assigned = qs.filter(status=Delivery.Status.DRIVER_ASSIGNED).count()
+        total_picked_up = qs.filter(status=Delivery.Status.PICKED_UP).count()
+        total_in_transit = qs.filter(status=Delivery.Status.IN_TRANSIT).count()
+        total_delivered = qs.filter(status=Delivery.Status.DELIVERED).count()
+        total_cancelled = qs.filter(status=Delivery.Status.CANCELLED).count()
+        total_spend = qs.filter(status=Delivery.Status.DELIVERED).aggregate(
+            total=Coalesce(Sum("price"), Value(0), output_field=DECIMAL_OUT)
+        )["total"]
+
+        year = request.GET.get("year")
+        metric = request.GET.get("metric", "count")
+
+        now = timezone.now()
+        year = int(year) if year and year.isdigit() else now.year
+
+        chart_qs = qs.filter(created_at__year=year)
+        chart_qs = chart_qs.filter(status=Delivery.Status.DELIVERED)
+
+        grouped = (
+            chart_qs
+            .annotate(m=TruncMonth("created_at"))
+            .values("m")
+            .annotate(
+                total_count=Count("id"),
+                total_amount=Coalesce(Sum("price"), Value(0), output_field=DECIMAL_OUT),
+            )
+            .order_by("m")
+        )
+
+        month_map = {}
+        for row in grouped:
+            month_num = row["m"].month
+            month_map[month_num] = {
+                "count": row["total_count"],
+                "amount": row["total_amount"],
+            }
+
+        series = []
+        for m in range(1, 13):
+            value = month_map.get(m, {"count": 0, "amount": 0})
+            series.append({
+                "month": m,
+                "label": MONTH_LABELS[m],
+                "value": value["amount"] if metric == "amount" else value["count"],
+                "count": value["count"],
+                "amount": value["amount"],
+            })
+
+        data = {
+            "total_deliveries": total_deliveries,
+            "total_pending": total_pending,
+            "total_searching": total_searching,
+            "total_driver_assigned": total_driver_assigned,
+            "total_picked_up": total_picked_up,
+            "total_in_transit": total_in_transit,
+            "total_delivered": total_delivered,
+            "total_cancelled": total_cancelled,
+            "total_spend": total_spend,
+
+            "delivery_overview": {
+                "year": year,
+                "data": series
+            }
+        }
+
+        return Response({"status": "success", "data": data}, status=200)

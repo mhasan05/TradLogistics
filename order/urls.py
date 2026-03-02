@@ -10,6 +10,9 @@ urlpatterns = [
     path("deliveries/<int:pk>/rate/", DeliveryRateAPIView.as_view(), name="delivery-rate"),
     path("deliveries/<int:pk>/tip/", DeliveryTipAPIView.as_view(), name="delivery-tip"),
 
+
+    path("company/dashboard/", CompanyDashboardAPIView.as_view(), name="company-dashboard"),
+
     path("deliveries/<int:id>/driver-location/", DeliveryDriverLocationAPIView.as_view()),
 
 
