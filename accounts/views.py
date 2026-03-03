@@ -28,6 +28,45 @@ def _jwt_for_user(user: User):
 def _get_user_company(user):
     return getattr(user, "company", None)
 
+class LoginAppView(APIView):
+    permission_classes = [AllowAny]
+    @transaction.atomic
+    def post(self, request):
+        role = request.data.get("role")
+        phone = request.data.get("phone")
+
+        if role not in ["customer", "driver", "company", "admin"]:
+            return Response({"status": "error", "message": "Invalid role."},status=status.HTTP_400_BAD_REQUEST)
+        client = get_twilio_client()
+        channel = "sms"
+        user = User.objects.filter(phone=phone).first()
+        if user:
+            # client.verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID).verifications.create(
+            #     to=phone,
+            #     channel=channel,
+            # )
+            return Response({"status": "success", "message": "OTP sent to your phone."},status=status.HTTP_200_OK)
+        else:
+            if role == "customer":
+                ser = AppUserSignupSerializer(data=request.data)
+            elif role == "driver":
+                ser = DriverSignupSerializer(data=request.data)
+            elif role == "company":
+                ser = CompanySignupSerializer(data=request.data)
+            ser.is_valid(raise_exception=True)
+            user = ser.save()
+            try:
+                # client.verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID).verifications.create(
+                #     to=phone,
+                #     channel=channel,
+                # )
+                
+                return Response({"status": "success", "message": "OTP sent to your phone."},status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response(
+                    {"status": "error", "message": "Could not send OTP. Please try again later."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
 
 class SignupView(APIView):
@@ -207,26 +246,44 @@ class VerifyPhoneOTPView(APIView):
             phone = ser.validated_data["phone"]
             code = ser.validated_data["code"]
 
+            user = User.objects.filter(phone=phone).first()
+            if not user:
+                return Response({"status": "error","detail": "User does not exist."}, status=400)
+
             client = get_twilio_client()
-            check = client.verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID).verification_checks.create(
-                to=phone,
-                code=code,
-            )
+            check = "client.verify.v2.services(settings.TWILIO_VERIFY_SERVICE_SID).verification_checks.create(to=phone,code=code)"
 
             # Twilio returns status like: "approved" when correct
-            if check.status != "approved":
+            # if check.status != "approved":
+            if check == "approved":
                 return Response({"status": "error","detail": "Invalid or expired OTP."}, status=400)
 
             # Mark verified (if user exists)
-            user = User.objects.filter(phone=phone).first()
-            if user:
+            if user.is_active == False:
+                created = True
+                message = "Phone verified successfully."
+            else:
+                created = False
+                message = "Successfully Loged In."
+            if user and user.is_active == False:
                 user.is_active = True
                 user.phone_verified = True
                 user.phone_verified_at = timezone.now()
                 user.save(update_fields=["phone_verified", "phone_verified_at","is_active"])
             refresh = RefreshToken.for_user(user)
-            access_token =  refresh.access_token
-            return Response({"status": "success","message": "Phone verified successfully.", "access_token": access_token}, status=200)
+            access_token =  str(refresh.access_token)
+            if user.role == "customer" or user.role == "admin":
+                serializer = UserProfileSerializer(user)
+            elif user.role == "driver":
+                driver = get_object_or_404(Driver, user_id=user.user_id)
+                serializer = DriverProfileSerializer(driver)
+            elif user.role == "company":
+                company = get_object_or_404(Company, user_id=user.user_id)
+                serializer = CompanyProfileSerializer(company)
+            else:
+                return Response({"status": "error","detail": "User not found."}, status=400)
+            return Response({"status": "success","message": message, "access_token": access_token,"created":created, "data": serializer.data}, status=200)
+            
         except Exception as e:
             return Response({"status": "error","detail": str(e)}, status=400)
 

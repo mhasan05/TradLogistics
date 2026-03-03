@@ -7,6 +7,20 @@ from django.utils import timezone
 from order.models import Delivery
 from django.db.models import Sum
 
+
+class AppUserSignupSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ["phone", "role"]
+
+    def create(self, validated_data):
+        user = User(**validated_data)
+        user.is_active = False
+        user.set_unusable_password()
+        user.save()
+        return user
+
 class UserSignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
 
