@@ -24,7 +24,7 @@ class DriverSignupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Driver
-        fields = ["phone", "role", "password"]
+        fields = '__all__'
 
     def create(self, validated_data):
         password = validated_data.pop("password")
@@ -122,7 +122,7 @@ class DriverProfileSerializer(serializers.ModelSerializer):
 
     def get_truck_id(self, obj):
         if hasattr(obj, "assign_truck"):
-            return obj.assign_truck.truck_id
+            return obj.assign_truck.truck_id if obj.assign_truck else None
         return None
     
     def get_today_total_deliveries(self, obj):

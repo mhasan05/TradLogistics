@@ -30,6 +30,7 @@ class TruckSerializer(serializers.ModelSerializer):
     class Meta:
         model = Truck
         fields = [
+            "id",
             "public_id",
             "truck_id",
             "vehicle_type",
