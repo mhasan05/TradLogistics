@@ -82,7 +82,7 @@ class LoginView(APIView):
             user = ser.validated_data["user"]
             return Response(_jwt_for_user(user))
         except Exception as e:
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"status": "error", "message": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
