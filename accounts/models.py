@@ -34,8 +34,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel, SoftDeletableMo
     user_id = models.AutoField(primary_key=True)
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=50,null=True, blank=True)
+    last_name = models.CharField(max_length=50,null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     phone = models.CharField(max_length=15, unique=True)  # e.g. +18761234567
     profile_image = models.ImageField(upload_to='profile_images/', default='profile_images/default.jpg')
