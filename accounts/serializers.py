@@ -37,7 +37,7 @@ class UserSignupSerializer(serializers.ModelSerializer):
 class AppDriverSignupSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = User
+        model = Driver
         fields = ["phone", "role"]
 
     def create(self, validated_data):
