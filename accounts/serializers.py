@@ -195,7 +195,7 @@ class DriverProfileSerializer(serializers.ModelSerializer):
             "driving_license_front": document.driving_license_front,
             "driving_license_back": document.driving_license_back,
             "national_id_front": document.national_id_front,
-            "national_id_back": document.color,
+            "national_id_back": document.national_id_back,
             "vehicle_registration": document.vehicle_registration,
             "status": document.status,
             
