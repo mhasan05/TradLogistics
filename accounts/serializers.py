@@ -130,7 +130,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class DriverProfileSerializer(serializers.ModelSerializer):
     vehicle = serializers.SerializerMethodField()
-    document = serializers.SerializerMethodField()
+    # document = serializers.SerializerMethodField()
     truck_id = serializers.SerializerMethodField()
     today_total_deliveries = serializers.SerializerMethodField()
     today_total_earnings = serializers.SerializerMethodField()
@@ -187,20 +187,20 @@ class DriverProfileSerializer(serializers.ModelSerializer):
 
         }
     
-    def get_document(self, obj):
-        document = Document.objects.filter(driver=obj.user_id).first()
-        if not document:
-            return None
-        return {
-            "driving_license_front": document.driving_license_front,
-            "driving_license_back": document.driving_license_back,
-            "national_id_front": document.national_id_front,
-            "national_id_back": document.national_id_back,
-            "vehicle_registration": document.vehicle_registration,
-            "status": document.status,
+    # def get_document(self, obj):
+    #     document = Document.objects.filter(driver=obj.user_id).first()
+    #     if not document:
+    #         return None
+    #     return {
+    #         "driving_license_front": document.driving_license_front,
+    #         "driving_license_back": document.driving_license_back,
+    #         "national_id_front": document.national_id_front,
+    #         "national_id_back": document.national_id_back,
+    #         "vehicle_registration": document.vehicle_registration,
+    #         "status": document.status,
             
 
-        }
+    #     }
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
