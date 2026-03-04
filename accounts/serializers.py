@@ -41,7 +41,7 @@ class AppDriverSignupSerializer(serializers.ModelSerializer):
         fields = ["phone", "role"]
 
     def create(self, validated_data):
-        user = User(**validated_data)
+        user = Driver(**validated_data)
         user.is_active = False
         user.set_unusable_password()
         user.save()
