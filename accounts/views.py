@@ -275,6 +275,7 @@ class VerifyPhoneOTPView(APIView):
             if user.role == "customer" or user.role == "admin":
                 serializer = UserProfileSerializer(user)
             elif user.role == "driver":
+                user = Driver.objects.filter(phone=phone).first()
                 driver = get_object_or_404(Driver, user_id=user.user_id)
                 serializer = DriverProfileSerializer(driver)
             elif user.role == "company":
