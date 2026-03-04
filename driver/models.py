@@ -52,6 +52,7 @@ class Document(TimestampedModel):
     national_id_front = models.ImageField(upload_to='national_ids/',null=True, blank=True)
     national_id_back = models.ImageField(upload_to='national_ids/',null=True, blank=True)
     vehicle_registration = models.ImageField(upload_to='reg_documents/', null=True, blank=True)
+    status = models.CharField(max_length=20, choices=[('pending','Pending'),('approved','Approved'),('rejected','Rejected')], default='pending')
 
 class Rating(TimestampedModel):
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='ratings')

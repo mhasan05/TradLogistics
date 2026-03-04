@@ -32,7 +32,20 @@ class UserSignupSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, is_active=False, **validated_data)
         return user
-    
+
+
+class AppDriverSignupSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ["phone", "role"]
+
+    def create(self, validated_data):
+        user = User(**validated_data)
+        user.is_active = False
+        user.set_unusable_password()
+        user.save()
+        return user
 class DriverSignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
 

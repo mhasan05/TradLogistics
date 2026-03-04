@@ -50,7 +50,7 @@ class LoginAppView(APIView):
             if role == "customer":
                 ser = AppUserSignupSerializer(data=request.data)
             elif role == "driver":
-                ser = DriverSignupSerializer(data=request.data)
+                ser = AppDriverSignupSerializer(data=request.data)
             elif role == "company":
                 ser = CompanySignupSerializer(data=request.data)
             ser.is_valid(raise_exception=True)
