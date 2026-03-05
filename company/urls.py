@@ -20,4 +20,6 @@ urlpatterns = [
 
     # Dashboard
     path("fleet/dashboard/", FleetDashboardAPIView.as_view()),
+
+    path("dashboard/", CompanyDashboardAPIView.as_view(), name="company-dashboard"),
 ]

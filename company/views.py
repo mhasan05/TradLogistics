@@ -322,3 +322,98 @@ class ZoneDetailAPIView(APIView):
         zone = get_object_or_404(self.get_queryset(request), id=id)
         zone.delete()
         return Response({"status": "success", "message": "Zone deleted."}, status=200)
+
+
+
+
+from order.models import  Delivery
+from driver.models import Driver
+
+class CompanyDashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if getattr(user, "role", None) not in ["company", "admin"]:
+            return Response(
+                {"status": "error", "detail": "Only company/admin can access this dashboard."},
+                status=403,
+            )
+
+        company = Company.objects.get(user_id=user.user_id)
+
+
+        today = timezone.localdate()
+
+        delivery_qs = Delivery.objects.filter(created_at__date=today)
+        driver_qs = Driver.objects.all()
+        print("+++++++++++++++++++++++++++++++++++++++",delivery_qs)
+
+        if user.role == "company":
+            delivery_qs = delivery_qs.filter(driver__driver_company=company)
+            driver_qs = driver_qs.filter(driver_company=company)
+
+        
+
+
+        in_transit = delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"]).count()
+
+
+        completed_deliveries = delivery_qs.filter(status__in=["DELIVERED", "COMPLETED"]).count()
+
+
+        online_count = driver_qs.filter(is_online=True).count()
+
+
+        on_delivery_count = delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"]).values("driver_id").distinct().count()
+
+
+        offline_count = driver_qs.filter(is_online=False).count()
+
+
+        drivers_map = list(
+            driver_qs.only("location_lat", "location_long", "is_online").values(
+                "location_lat", "location_long", "is_online"
+            )[:200]
+        )
+
+        deliveries_map = list(
+            delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"])
+            .only("status", "dropoff_lat", "dropoff_lng")
+            .values("status", "dropoff_lat", "dropoff_lng")[:200]
+        )
+
+        data = {
+            "in_transit": in_transit,
+            "completed_deliveries": completed_deliveries,
+            "drivers": {
+                "online": online_count,
+                "on_delivery": on_delivery_count,
+                "offline": offline_count,
+            },
+            "map": {
+                "drivers": [
+                    {
+                        
+                        "lat": d["location_lat"],
+                        "lng": d["location_long"],
+                        "status": "online" if d["is_online"] else "offline",
+                    }
+                    for d in drivers_map
+                    if d["location_lat"] is not None and d["location_long"] is not None
+                ],
+                "deliveries": [
+                    {
+                        
+                        "status": x["status"],
+                        "drop_lat": x["drop_lat"],
+                        "drop_lng": x["drop_lng"],
+                    }
+                    for x in deliveries_map
+                    if x["drop_lat"] is not None and x["drop_lng"] is not None
+                ],
+            },
+        }
+
+        return Response({"status": "success", "data": data})
