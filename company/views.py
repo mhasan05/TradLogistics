@@ -388,7 +388,7 @@ class CompanyDashboardAPIView(APIView):
         )
 
         deliveries_map = list(
-            delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"])
+            delivery_qs.filter(status__in=[Delivery.Status.IN_TRANSIT, Delivery.Status.PICKED_UP])
             .only("status", "dropoff_lat", "dropoff_lng")
             .values("status", "dropoff_lat", "dropoff_lng")[:200]
         )
