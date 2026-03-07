@@ -382,14 +382,8 @@ class CompanyDashboardAPIView(APIView):
 
 
         drivers_map = list(
-            driver_qs.filter(
-                is_online=True,
-                location_lat__isnull=False,
-                location_long__isnull=False
-            ).values(
-                "location_lat",
-                "location_long",
-                "is_online"
+            driver_qs.only("location_lat", "location_long", "is_online").values(
+                "location_lat", "location_long", "is_online"
             )[:200]
         )
 
