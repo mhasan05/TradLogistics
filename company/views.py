@@ -55,6 +55,7 @@ class TruckListCreateAPIView(APIView):
             driver = Driver.objects.get(user_id=assign_driver)
             driver.assign_truck = truck.truck_id
             driver.save(update_fields=["assign_truck", "updated_at"])
+            print(driver.assign_truck, truck.truck_id)
         return Response({"status": "success", "data": TruckSerializer(truck).data}, status=201)
 
 
