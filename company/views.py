@@ -348,7 +348,7 @@ class CompanyDashboardAPIView(APIView):
 
         today = timezone.localdate()
 
-        delivery_qs = Delivery.objects.filter(created_at__date=today)
+        delivery_qs = Delivery.objects.all()
         driver_qs = Driver.objects.all()
 
         if user.role == "company":
@@ -387,11 +387,6 @@ class CompanyDashboardAPIView(APIView):
             )[:200]
         )
 
-        deliveries_map = list(
-            delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"])
-            .only("status", "dropoff_lat", "dropoff_lng")
-            .values("status", "dropoff_lat", "dropoff_lng")[:200]
-        )
         deliveries_map = list(delivery_qs.filter(status__in=[Delivery.Status.IN_TRANSIT, Delivery.Status.PICKED_UP]).values("status","driver_last_lat","driver_last_lng"))
 
         data = {
