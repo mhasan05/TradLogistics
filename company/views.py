@@ -400,16 +400,6 @@ class CompanyDashboardAPIView(APIView):
                 "offline": offline_count,
             },
             "map": {
-                "drivers": [
-                    {
-                        
-                        "lat": d["location_lat"],
-                        "lng": d["location_long"],
-                        "status": "online" if d["is_online"] else "offline",
-                    }
-                    for d in drivers_map
-                    if d["location_lat"] is not None and d["location_long"] is not None
-                ],
                 "deliveries": [
                     {
                         
