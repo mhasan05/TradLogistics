@@ -43,12 +43,18 @@ class TruckListCreateAPIView(APIView):
     def post(self, request):
         if not _ensure_roles(request.user, ["admin", "company"]):
             return Response({"status": "error", "detail": "Not allowed."}, status=403)
-
+        
+        assign_driver = request.data.get("assign_driver", None)
+        
         data = request.data.copy()
         data["owner"] = request.user.user_id
         ser = TruckCreateUpdateSerializer(data=data)
         ser.is_valid(raise_exception=True)
         truck = ser.save()
+        if assign_driver:
+            driver = Driver.objects.get(user_id=assign_driver)
+            driver.assign_truck = truck.truck_id
+            driver.save(update_fields=["assign_truck", "updated_at"])
         return Response({"status": "success", "data": TruckSerializer(truck).data}, status=201)
 
 
