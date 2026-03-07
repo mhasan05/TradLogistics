@@ -382,16 +382,24 @@ class CompanyDashboardAPIView(APIView):
 
 
         drivers_map = list(
-            driver_qs.only("location_lat", "location_long", "is_online").values(
-                "location_lat", "location_long", "is_online"
+            driver_qs.filter(
+                is_online=True,
+                location_lat__isnull=False,
+                location_long__isnull=False
+            ).values(
+                "location_lat",
+                "location_long",
+                "is_online"
             )[:200]
         )
 
         deliveries_map = list(
-            delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"])
-            .only("status", "dropoff_lat", "dropoff_lng")
-            .values("status", "dropoff_lat", "dropoff_lng")[:200]
-        )
+        delivery_qs.filter(
+            status__in=[Delivery.Status.IN_TRANSIT, Delivery.Status.PICKED_UP]
+        ).values(
+            "status", "dropoff_lat", "dropoff_lng"
+        )[:200]
+    )
 
         data = {
             "today_total_order": today_total_order,
