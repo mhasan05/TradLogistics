@@ -394,8 +394,8 @@ class CompanyDashboardAPIView(APIView):
             "status",
             "driver_last_lat",
             "driver_last_lng",
-            "driver__user__first_name",
-            "driver__user__last_name",
+            "driver__first_name",
+            "driver__last_name",
             "driver__assigned_trucks__truck_id"
         )[:200]
     )
@@ -415,7 +415,7 @@ class CompanyDashboardAPIView(APIView):
                     {
                         
                         "status": x["status"],
-                        "driver_name": x["driver__user__first_name"] + " " + x["driver__user__last_name"],
+                        "driver_name": x["driver__first_name"] + " " + x["driver__last_name"],
                         "truck_id": x["driver__assigned_trucks__truck_id"],
                         "driver_last_lat": x["driver_last_lat"],
                         "driver_last_lng": x["driver_last_lng"],
