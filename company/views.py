@@ -328,7 +328,9 @@ class ZoneDetailAPIView(APIView):
 
 from order.models import  Delivery
 from driver.models import Driver
-
+from django.db.models.functions import Coalesce
+from django.db.models import Sum, Q, Count
+from decimal import Decimal
 class CompanyDashboardAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -348,7 +350,6 @@ class CompanyDashboardAPIView(APIView):
 
         delivery_qs = Delivery.objects.filter(created_at__date=today)
         driver_qs = Driver.objects.all()
-        print("+++++++++++++++++++++++++++++++++++++++",delivery_qs)
 
         if user.role == "company":
             delivery_qs = delivery_qs.filter(driver__driver_company=company)
@@ -371,6 +372,14 @@ class CompanyDashboardAPIView(APIView):
 
         offline_count = driver_qs.filter(is_online=False).count()
 
+        today_total_revenue = Delivery.objects.filter(
+            driver__driver_company=company,created_at__date=today
+        ).aggregate(total=Coalesce(Sum("price"), Decimal("0.00")))["total"]
+
+        today_total_order = Delivery.objects.filter(
+            driver__driver_company=company,created_at__date=today
+        ).count()
+
 
         drivers_map = list(
             driver_qs.only("location_lat", "location_long", "is_online").values(
@@ -385,8 +394,10 @@ class CompanyDashboardAPIView(APIView):
         )
 
         data = {
+            "today_total_order": today_total_order,
             "in_transit": in_transit,
             "completed_deliveries": completed_deliveries,
+            "today_total_revenue": today_total_revenue,
             "drivers": {
                 "online": online_count,
                 "on_delivery": on_delivery_count,
