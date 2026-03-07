@@ -358,16 +358,16 @@ class CompanyDashboardAPIView(APIView):
         
 
 
-        in_transit = delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"]).count()
+        in_transit = delivery_qs.filter(status__in=["in_transit", "picked_up"]).count()
 
 
-        completed_deliveries = delivery_qs.filter(status__in=["DELIVERED", "COMPLETED"]).count()
+        completed_deliveries = delivery_qs.filter(status__in=["delivered", "completed"]).count()
 
 
         online_count = driver_qs.filter(is_online=True).count()
 
 
-        on_delivery_count = delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"]).values("driver_id").distinct().count()
+        on_delivery_count = delivery_qs.filter(status__in=["in_transit", "picked_up"]).values("driver_id").distinct().count()
 
 
         offline_count = driver_qs.filter(is_online=False).count()
@@ -388,7 +388,7 @@ class CompanyDashboardAPIView(APIView):
         )
 
         deliveries_map = list(
-            delivery_qs.filter(status__in=["IN_TRANSIT", "PICKED_UP"])
+            delivery_qs.filter(status__in=["in_transit", "picked_up"])
             .only("status", "dropoff_lat", "dropoff_lng")
             .values("status", "dropoff_lat", "dropoff_lng")[:200]
         )
