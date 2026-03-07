@@ -387,7 +387,18 @@ class CompanyDashboardAPIView(APIView):
             )[:200]
         )
 
-        deliveries_map = list(delivery_qs.filter(status__in=[Delivery.Status.IN_TRANSIT, Delivery.Status.PICKED_UP]).values("status","driver_last_lat","driver_last_lng"))
+        deliveries_map = list(
+    delivery_qs.filter(
+        status__in=[Delivery.Status.IN_TRANSIT, Delivery.Status.PICKED_UP]
+        ).values(
+            "status",
+            "driver_last_lat",
+            "driver_last_lng",
+            "driver__user__first_name",
+            "driver__user__last_name",
+            "driver__assigned_trucks__truck_id"
+        )[:200]
+    )
 
         data = {
             "today_total_order": today_total_order,
@@ -404,8 +415,11 @@ class CompanyDashboardAPIView(APIView):
                     {
                         
                         "status": x["status"],
+                        "driver_name": x["driver__user__first_name"] + " " + x["driver__user__last_name"],
+                        "truck_id": x["driver__assigned_trucks__truck_id"],
                         "driver_last_lat": x["driver_last_lat"],
                         "driver_last_lng": x["driver_last_lng"],
+                        
                     }
                     for x in deliveries_map
                     if x["driver_last_lat"] is not None and x["driver_last_lng"] is not None
