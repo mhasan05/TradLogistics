@@ -47,6 +47,7 @@ class DeliveryListCreateAPIView(APIView):
 
     def get(self, request):
         user = request.user
+        status_filter = request.GET.get("status")
         if _ensure_role(user, "customer"):
             qs = Delivery.objects.filter(customer=request.user).order_by("-id")
             return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
@@ -54,6 +55,9 @@ class DeliveryListCreateAPIView(APIView):
             qs = Delivery.objects.filter(customer=request.user).order_by("-id")
             return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
         elif _ensure_role(user, "admin"):
+            if status_filter:
+                qs = Delivery.objects.filter(status=status_filter).order_by("-id")
+                return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
             qs = Delivery.objects.all().order_by("-id")
             return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
 
