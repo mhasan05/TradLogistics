@@ -465,7 +465,7 @@ class CompanyDashboardAPIView(APIView):
 
     def get(self, request):
         if not (_ensure_role(request.user, "customer") or _ensure_role(request.user, "company") or _ensure_role(request.user, "admin")):
-            return Response({"detail": "Only customer and company can access."}, status=403)
+            return Response({"detail": "Only customer and company and admin can access."}, status=403)
         
         if _ensure_role(request.user, "customer"):
             qs = Delivery.objects.filter(customer=request.user).order_by("-id")
@@ -473,6 +473,20 @@ class CompanyDashboardAPIView(APIView):
             qs = Delivery.objects.filter(customer=request.user).order_by("-id")
         elif _ensure_role(request.user, "admin"):
             qs = Delivery.objects.all().order_by("-id")
+
+        total_drivers = Driver.objects.count()
+
+        total_users = User.objects.count()
+
+        total_earnings = Delivery.objects.filter(
+            status=Delivery.Status.DELIVERED
+        ).aggregate(
+            total=Coalesce(
+                Sum("price"),
+                Value(0),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )["total"]
 
         total_deliveries = qs.count()
         total_pending = qs.filter(status=Delivery.Status.PENDING).count()
@@ -541,5 +555,9 @@ class CompanyDashboardAPIView(APIView):
                 "data": series
             }
         }
+        if request.user.role == "admin":
+            data["total_drivers"] = total_drivers
+            data["total_users"] = total_users
+            data["total_earnings"] = total_earnings
 
         return Response({"status": "success", "data": data}, status=200)
