@@ -466,8 +466,13 @@ class CompanyDashboardAPIView(APIView):
     def get(self, request):
         if not (_ensure_role(request.user, "customer") or _ensure_role(request.user, "company") or _ensure_role(request.user, "admin")):
             return Response({"detail": "Only customer and company can access."}, status=403)
-
-        qs = Delivery.objects.filter(customer=request.user).order_by("-id")
+        
+        if _ensure_role(request.user, "customer"):
+            qs = Delivery.objects.filter(customer=request.user).order_by("-id")
+        elif _ensure_role(request.user, "company"):
+            qs = Delivery.objects.filter(customer=request.user).order_by("-id")
+        elif _ensure_role(request.user, "admin"):
+            qs = Delivery.objects.all().order_by("-id")
 
         total_deliveries = qs.count()
         total_pending = qs.filter(status=Delivery.Status.PENDING).count()
