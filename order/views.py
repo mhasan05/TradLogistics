@@ -12,6 +12,7 @@ from .serializers import *
 from django.utils import timezone
 from django.db.models import Count, Sum, DecimalField, Value
 from django.db.models.functions import TruncMonth, Coalesce
+from company.models import Company
 
 
 def _make_pin(length=4):
@@ -474,7 +475,9 @@ class CompanyDashboardAPIView(APIView):
         elif _ensure_role(request.user, "admin"):
             qs = Delivery.objects.all().order_by("-id")
 
-        total_drivers = Driver.objects.count()
+        total_drivers = User.objects.filter(role="driver").count()
+        total_company = User.objects.filter(role="company").count()
+        total_customer = User.objects.filter(role="customer").count()
 
         total_users = User.objects.count()
 
@@ -556,8 +559,10 @@ class CompanyDashboardAPIView(APIView):
             }
         }
         if request.user.role == "admin":
-            data["total_drivers"] = total_drivers
             data["total_users"] = total_users
+            data["total_drivers"] = total_drivers
+            data["total_companies"] = total_company
+            data["total_customers"] = total_customer
             data["total_earnings"] = total_earnings
 
         return Response({"status": "success", "data": data}, status=200)
