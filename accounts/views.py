@@ -447,11 +447,11 @@ class AdminUserUpdateByIdAPIView(APIView):
 
             elif user.role == "driver":
                 driver = get_object_or_404(Driver, user_id=user.user_id)
-                data = DriverUpdateSerializer(driver).data
+                data = DriverProfileSerializer(driver).data
 
             elif user.role == "company":
                 company = get_object_or_404(Company, user_id=user.user_id)
-                data = CompanyUpdateSerializer(company).data
+                data = CompanyProfileSerializer(company).data
 
             else:
                 return Response(
@@ -542,3 +542,45 @@ class AdminUserUpdateByIdAPIView(APIView):
                 {"status": "error", "detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+
+
+    def delete(self, request, user_id):
+            try:
+                if request.user.role != "admin":
+                    return Response(
+                        {"status": "error", "detail": "Only admin can access this API."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                user = get_object_or_404(User, user_id=user_id)
+
+                if user.user_id == request.user.user_id:
+                    return Response(
+                        {"status": "error", "detail": "You cannot delete your own account."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                with transaction.atomic():
+
+                    # delete related driver profile
+                    Driver.objects.filter(user_id=user.user_id).delete()
+
+                    # delete related company profile
+                    Company.objects.filter(user_id=user.user_id).delete()
+
+                    # delete main user
+                    user.delete()
+
+                return Response(
+                    {
+                        "status": "success",
+                        "message": "User deleted successfully."
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            except Exception as e:
+                return Response(
+                    {"status": "error", "detail": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
