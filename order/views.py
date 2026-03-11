@@ -47,7 +47,10 @@ class DeliveryListCreateAPIView(APIView):
 
     def get(self, request):
         user = request.user
-        if not (_ensure_role(user, "customer") or _ensure_role(user, "company")):
+        if _ensure_role(user, "customer"):
+            qs = Delivery.objects.filter(customer=request.user).order_by("-id")
+            return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
+        elif _ensure_role(user, "company"):
             qs = Delivery.objects.filter(customer=request.user).order_by("-id")
             return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
         elif _ensure_role(user, "admin"):
