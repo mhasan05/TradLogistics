@@ -368,6 +368,7 @@ class UserListAPIView(APIView):
     def get(self, request):
         user = request.user
         role_filter = request.GET.get("role")
+        status_filter = request.GET.get("status")
         qs = User.objects.all().order_by("-user_id")
         if role_filter == "driver":
             if user.role == "company":
@@ -379,8 +380,16 @@ class UserListAPIView(APIView):
                     "data": DriverProfileSerializer(qs, many=True).data
                 }, status=200)
             elif user.role == "admin":
-                qs = Driver.objects.all().order_by("-user_id")
-                qs = qs.filter(role="driver")
+                if status_filter:
+                    if status_filter == "active":
+                        qs = Driver.objects.all().order_by("-user_id")
+                        qs = qs.filter(is_verified=True)
+                    elif status_filter == "pending":
+                        qs = Driver.objects.all().order_by("-user_id")
+                        qs = qs.filter(is_verified=False)
+                else:
+                    qs = Driver.objects.all().order_by("-user_id")
+                    qs = qs.filter(role="driver")
                 return Response({
                     "status": "success",
                     "count": qs.count(),
