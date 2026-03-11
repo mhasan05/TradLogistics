@@ -426,3 +426,119 @@ class UserListAPIView(APIView):
                 "status": "error",
                 "detail": "Not allowed."
             }, status=403)
+
+
+
+class AdminUserUpdateByIdAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        try:
+            if request.user.role != "admin":
+                return Response(
+                    {"status": "error", "detail": "Only admin can access this API."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            user = get_object_or_404(User, user_id=user_id)
+
+            if user.role in ["customer", "admin"]:
+                data = UserProfileSerializer(user).data
+
+            elif user.role == "driver":
+                driver = get_object_or_404(Driver, user_id=user.user_id)
+                data = DriverUpdateSerializer(driver).data
+
+            elif user.role == "company":
+                company = get_object_or_404(Company, user_id=user.user_id)
+                data = CompanyUpdateSerializer(company).data
+
+            else:
+                return Response(
+                    {"status": "error", "detail": "Invalid user role."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            return Response(
+                {
+                    "status": "success",
+                    "data": data
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {"status": "error", "detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def patch(self, request, user_id):
+        try:
+            # only admin can update any user by id
+            if request.user.role != "admin":
+                return Response(
+                    {"status": "error", "detail": "Only admin can access this API."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            target_user = get_object_or_404(User, user_id=user_id)
+
+            with transaction.atomic():
+                # customer / admin basic user update
+                if target_user.role in ["customer", "admin"]:
+                    serializer = UserProfileSerializer(target_user, data=request.data, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+
+                    return Response(
+                        {
+                            "status": "success",
+                            "message": "User profile updated successfully.",
+                            "data": UserProfileSerializer(target_user).data
+                        },
+                        status=status.HTTP_200_OK
+                    )
+
+                # driver update
+                elif target_user.role == "driver":
+                    driver = get_object_or_404(Driver, user_id=target_user.user_id)
+                    serializer = DriverUpdateSerializer(driver, data=request.data, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+
+                    return Response(
+                        {
+                            "status": "success",
+                            "message": "Driver profile updated successfully.",
+                            "data": DriverUpdateSerializer(driver).data
+                        },
+                        status=status.HTTP_200_OK
+                    )
+
+                # company update
+                elif target_user.role == "company":
+                    company = get_object_or_404(Company, user_id=target_user.user_id)
+                    serializer = CompanyUpdateSerializer(company, data=request.data, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+
+                    return Response(
+                        {
+                            "status": "success",
+                            "message": "Company profile updated successfully.",
+                            "data": CompanyUpdateSerializer(company).data
+                        },
+                        status=status.HTTP_200_OK
+                    )
+
+                return Response(
+                    {"status": "error", "detail": "Invalid user role."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        except Exception as e:
+            return Response(
+                {"status": "error", "detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

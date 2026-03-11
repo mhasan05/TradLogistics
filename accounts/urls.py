@@ -19,4 +19,6 @@ urlpatterns = [
 
     path("profile/", MyProfileView.as_view()),
     path("users/", UserListAPIView.as_view()),
+
+    path("admin/users/<int:user_id>/", AdminUserUpdateByIdAPIView.as_view(), name="admin-user-update-by-id"),
 ]
