@@ -46,8 +46,13 @@ class DeliveryListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = Delivery.objects.filter(customer=request.user).order_by("-id")
-        return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
+        user = request.user
+        if not (_ensure_role(user, "customer") or _ensure_role(user, "company")):
+            qs = Delivery.objects.filter(customer=request.user).order_by("-id")
+            return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
+        elif _ensure_role(user, "admin"):
+            qs = Delivery.objects.all().order_by("-id")
+            return Response({"status": "success", "data": DeliveryListSerializer(qs, many=True).data}, status=200)
 
     @transaction.atomic
     def post(self, request):
