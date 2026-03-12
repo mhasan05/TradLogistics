@@ -17,13 +17,38 @@ from .serializers import *
 class DriverWithdrawRequestAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "driver":
+            return Response(
+                {"status": "error", "detail": "Only driver can view withdraw requests."},
+                status=403
+            )
+
+        driver = Driver.objects.get(user_id=user.user_id)
+
+        withdraw_qs = WithdrawRequest.objects.filter(driver=driver).order_by("-requested_at")
+        serializer = WithdrawRequestSerializer(data=withdraw_qs, context={"request": request})
+
+        data = serializer.data
+
+        return Response(
+            {
+                "status": "success",
+                "data": data,
+            },
+            status=status.HTTP_200_OK
+        )
+
     def post(self, request):
         user = request.user
-        user = Driver.objects.get(user_id=user.user_id)
-
+        
         if user.role != "driver":
             return Response({"status": "error", "detail": "Only driver can request withdraw."}, status=403)
 
+        user = Driver.objects.get(user_id=user.user_id)
         serializer = WithdrawRequestSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
