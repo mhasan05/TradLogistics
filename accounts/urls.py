@@ -5,6 +5,8 @@ urlpatterns = [
     path("signup/", SignupView.as_view()),
     path("login/", LoginView.as_view()),
     path("app/login/", LoginAppView.as_view()),
+    path("apple_login/", AppleLoginAPIView.as_view(), name="apple-login"),
+    path('google_login/', GoogleLoginAPIView.as_view(), name='google_login'),
 
     path("email/send-otp/", SentEmailOTP.as_view()),
     path("email/verify-email/", VerifyEmail.as_view()),

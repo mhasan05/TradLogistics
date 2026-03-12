@@ -19,7 +19,13 @@ from company.serializers import *
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 from django.db.models import Q
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from .apple_login import verify_apple_token
 reset_token_generator = PasswordResetTokenGenerator()
+
+google_client_id = settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY
+
 
 def _jwt_for_user(user: User):
     refresh = RefreshToken.for_user(user)
@@ -584,3 +590,112 @@ class AdminUserUpdateByIdAPIView(APIView):
                     {"status": "error", "detail": str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            
+
+
+class AppleLoginAPIView(APIView):
+    def post(self, request):
+        identity_token = request.data.get("identity_token")
+        if not identity_token:
+            return Response(
+                {"status": "error", "message": "identity_token required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            decoded_token = verify_apple_token(identity_token)
+            email = decoded_token.get("email")
+            apple_id = decoded_token.get("sub")
+
+            if not email:
+                return Response(
+                    {"status": "error", "message": "Email not found in token"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            user, created = User.objects.get_or_create(email=email)
+            if created:
+                user.first_name = "Apple"
+                user.last_name = "last_name"
+                user.apple_id = apple_id
+                user.is_active = True
+                user.set_unusable_password()
+                user.save()
+
+            refresh = RefreshToken.for_user(user)
+
+            return Response(
+                {
+                    "status": "success",
+                    "access_token": str(refresh.access_token),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+class GoogleLoginAPIView(APIView):
+    def post(self, request):
+        token = request.data.get('id_token')
+        if not token:
+            email = request.data.get('email')
+            picture = request.data.get('picture')
+            first_name = request.data.get('first_name')
+            last_name = request.data.get('last_name')
+            google_id = request.data.get('google_id')
+
+            if not google_id:
+                return Response({'status':'error','message': 'Missing required field'}, status=status.HTTP_400_BAD_REQUEST)
+            user, created = User.objects.get_or_create(email=email)
+
+            if created:
+                user.first_name = first_name
+                user.last_name = last_name
+                user.google_image_url = picture
+                user.is_active = True
+                user.google_id = google_id
+                user.set_unusable_password()
+                user.save()
+
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "status": "success",
+                'access_token': str(refresh.access_token),
+            })
+
+        try:
+            # Verify the token
+            idinfo = id_token.verify_oauth2_token(token, requests.Request(), google_client_id)
+
+            email = idinfo.get('email')
+            full_name = idinfo.get('name') or f"{idinfo.get('given_name', '')} {idinfo.get('family_name', '')}".strip()
+            picture = idinfo.get('picture', '')
+
+            first_name = full_name.split()[0]
+            last_name = ' '.join(full_name.split()[1:])
+
+            if not email:
+                return Response({'detail': 'Email not found in token'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user, created = User.objects.get_or_create(email=email)
+
+            if created:
+                user.first_name = first_name
+                user.last_name = last_name
+                user.google_image_url = picture
+                user.is_active = True
+                user.google_id = idinfo.get('sub')
+                user.set_unusable_password()
+                user.save()
+
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "status": "success",
+                'access_token': str(refresh.access_token),
+            })
+
+        except ValueError:
+            return Response({'detail': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)

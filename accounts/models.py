@@ -48,6 +48,12 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel, SoftDeletableMo
     email_verified = models.BooleanField(default=False)
     email_verified_at = models.DateTimeField(null=True, blank=True)
 
+    
+    apple_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    apple_image_url = models.URLField(blank=True, null=True)
+    google_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    google_image_url = models.URLField(blank=True, null=True)
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)

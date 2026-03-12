@@ -241,3 +241,6 @@ class AdminUserListSerializer(serializers.ModelSerializer):
             "is_active",
             "date_joined",
         ]
+
+class GoogleLoginSerializer(serializers.Serializer):
+    id_token = serializers.CharField()

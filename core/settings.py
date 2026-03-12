@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "social_django"
     'corsheaders',
     "channels",
     'accounts',
@@ -197,3 +198,19 @@ CHANNEL_LAYERS = {
         "CONFIG": {"hosts": [("127.0.0.1", 6380)]},
     }
 }
+
+#Social Login
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = "1041541736556-6q8oltkt3o3pr5gnig49ejn9bli0pdnu.apps.googleusercontent.com"
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = "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"
+
+
+APPLE_TEAM_ID = "9F92NY2G6Y"
+APPLE_CLIENT_ID = "com.corinnaReibchen.theClue"
+APPLE_KEY_ID = "RC5CQHMPZN"
+APPLE_PRIVATE_KEY_PATH = BASE_DIR / "AuthKey_RC5CQHMPZN.p8"
