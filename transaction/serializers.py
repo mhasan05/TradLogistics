@@ -7,7 +7,7 @@ from driver.models import Driver
 class WithdrawRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = WithdrawRequest
-        fields = ["id", "amount", "account_name", "account_number", "bank_name","branch","account_type","swift_code"]
+        fields = ["id", "amount", "account_name", "account_number", "bank_name","branch","account_type","swift_code","status","requested_at", "processed_at", "processed_by"]
 
     def validate_amount(self, value):
         driver = self.context["request"].user
