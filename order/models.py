@@ -58,9 +58,9 @@ class Delivery(TimestampedModel, SoftDeletableModel):
     dropoff_lng = models.FloatField(null=True, blank=True)
 
     weight = models.FloatField(null=True, blank=True)
-    description = models.TextField(blank=True)
-    special_instruction = models.TextField(blank=True)
-    sensitivity_level = models.CharField(max_length=50, blank=True)
+    description = models.TextField(null=True, blank=True)
+    special_instruction = models.TextField(null=True, blank=True)
+    sensitivity_level = models.CharField(max_length=50, null=True, blank=True)
     fragile = models.BooleanField(default=False)
 
     scheduled_at = models.DateTimeField(null=True, blank=True)
@@ -69,10 +69,10 @@ class Delivery(TimestampedModel, SoftDeletableModel):
 
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
-    service_data = models.JSONField(default=dict, blank=True)
-    price_breakdown = models.JSONField(default=dict, blank=True)
+    service_data = models.JSONField(default=dict, null=True, blank=True)
+    price_breakdown = models.JSONField(default=dict, null=True, blank=True)
 
-    verification_pin = models.CharField(max_length=6, blank=True)
+    verification_pin = models.CharField(max_length=6, null=True, blank=True)
 
 
     driver_last_lat = models.FloatField(null=True, blank=True)
