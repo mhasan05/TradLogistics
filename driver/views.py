@@ -197,3 +197,51 @@ class DriverDocumentAPIView(APIView):
 
         doc.delete()
         return Response({"status": "success", "message": "Documents deleted successfully."}, status=status.HTTP_200_OK)
+
+
+
+
+
+from django.db import transaction
+class AdminDriverDocumentStatusAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, driver_id):
+        if request.user.role != "admin":
+            return Response(
+                {"status": "error", "detail": "Only admin can access this API."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        driver = get_object_or_404(Driver, user_id=driver_id)
+        document = get_object_or_404(Document, driver=driver)
+
+        serializer = AdminDocumentStatusUpdateSerializer(document, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        new_status = serializer.validated_data["status"]
+
+        with transaction.atomic():
+            document.status = new_status
+            document.save(update_fields=["status", "updated_at"] if hasattr(document, "updated_at") else ["status"])
+
+            # Update driver verification flag
+            if new_status == "approved":
+                driver.is_verified = True
+            else:
+                driver.is_verified = False
+
+            driver.save(update_fields=["is_verified", "updated_at"] if hasattr(driver, "updated_at") else ["is_verified"])
+
+        return Response(
+            {
+                "status": "success",
+                "message": "Document status updated successfully.",
+                "data": {
+                    "driver_id": driver.user_id,
+                    "document_status": document.status,
+                    "driver_is_verified": driver.is_verified,
+                }
+            },
+            status=status.HTTP_200_OK
+        )

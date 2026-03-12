@@ -53,3 +53,16 @@ class DocumentSerializer(serializers.ModelSerializer):
             "status",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+
+class AdminDocumentStatusUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Document
+        fields = ["status"]
+
+    def validate_status(self, value):
+        allowed = ["pending", "approved", "rejected"]
+        if value not in allowed:
+            raise serializers.ValidationError("Invalid status.")
+        return value
