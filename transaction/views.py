@@ -10,6 +10,7 @@ from decimal import Decimal
 from django.db.models.functions import TruncDate
 from django.utils.dateparse import parse_date
 from django.db.models import DecimalField, Value
+from django.shortcuts import get_object_or_404
 from .models import *
 from .serializers import *
 
@@ -18,26 +19,34 @@ class DriverWithdrawRequestAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
 
-    def get(self, request):
-        user = request.user
+    def get(self, request, driver_id = None):
 
-        if user.role != "driver":
+        status_filter = request.GET.get("status")
+
+        # only admin allowed
+        if request.user.role == "company" or request.user.role == "customer":
             return Response(
-                {"status": "error", "detail": "Only driver can view withdraw requests."},
-                status=403
+                {"status": "error", "detail": "Only admin and driver can access this API."},
+                status=status.HTTP_403_FORBIDDEN
             )
+        if not driver_id:
+            driver_id = request.user.user_id
 
-        driver = Driver.objects.get(user_id=user.user_id)
+        driver = get_object_or_404(Driver, user_id=driver_id)
 
         withdraw_qs = WithdrawRequest.objects.filter(driver=driver).order_by("-requested_at")
-        serializer = WithdrawRequestSerializer(data=withdraw_qs, context={"request": request})
 
-        data = serializer.data
+        if status_filter:
+            withdraw_qs = withdraw_qs.filter(status=status_filter)
+
+        serializer = WithdrawRequestSerializer(withdraw_qs, many=True)
 
         return Response(
             {
                 "status": "success",
-                "data": data,
+                "driver_id": driver_id,
+                "count": withdraw_qs.count(),
+                "data": serializer.data
             },
             status=status.HTTP_200_OK
         )

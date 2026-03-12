@@ -3,6 +3,7 @@ from .views import *
 
 urlpatterns = [
     path("driver/withdraw/", DriverWithdrawRequestAPIView.as_view()),
+    path("driver/withdraw/<int:driver_id>/", DriverWithdrawRequestAPIView.as_view()),
     path("admin/withdraw/<int:withdraw_id>/process/", AdminProcessWithdrawAPIView.as_view()),
 
     path("driver/wallet-summary/", DriverWalletSummaryAPIView.as_view()),
