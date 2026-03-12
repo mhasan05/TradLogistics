@@ -32,7 +32,10 @@ class DriverWithdrawRequestAPIView(APIView):
         if not driver_id:
             driver_id = request.user.user_id
 
-        driver = get_object_or_404(Driver, user_id=driver_id)
+        try:
+            driver = Driver.objects.get(user_id=driver_id)
+        except Driver.DoesNotExist:
+            return Response({"status": "error", "detail": "Driver not found."}, status=status.HTTP_404_NOT_FOUND)
 
         withdraw_qs = WithdrawRequest.objects.filter(driver=driver).order_by("-requested_at")
 
