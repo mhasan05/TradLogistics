@@ -189,7 +189,11 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.tradlogistics.com",
+    "https://tradlogistics.com",
+    "https://www.tradlogistics.com",
+]
 
 # Redis channel layer
 CHANNEL_LAYERS = {

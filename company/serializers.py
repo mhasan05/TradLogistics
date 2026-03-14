@@ -43,6 +43,8 @@ class TruckSerializer(serializers.ModelSerializer):
             "driver_name",
             "cylinder_12kg",
             "cylinder_25kg",
+            "cylinder_12kg_price",
+            "cylinder_25kg_price",
             "status",
             "created_at",
             "updated_at",
@@ -79,6 +81,8 @@ class TruckCreateUpdateSerializer(serializers.ModelSerializer):
             "driver",
             "cylinder_12kg",
             "cylinder_25kg",
+            "cylinder_12kg_price",
+            "cylinder_25kg_price",
             "status",
         ]
 

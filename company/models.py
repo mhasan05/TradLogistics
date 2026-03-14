@@ -87,6 +87,10 @@ class Truck(models.Model):
     cylinder_12kg = models.PositiveIntegerField(default=0)
     cylinder_25kg = models.PositiveIntegerField(default=0)
 
+    # Cost
+    cylinder_12kg_price = models.PositiveIntegerField(default=0)
+    cylinder_25kg_price = models.PositiveIntegerField(default=0)
+
     last_lat = models.FloatField(null=True, blank=True)
     last_lng = models.FloatField(null=True, blank=True)
     last_location_updated_at = models.DateTimeField(null=True, blank=True)
