@@ -197,6 +197,9 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.tradlogistics.com",
 ]
 
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
 # Redis channel layer
 CHANNEL_LAYERS = {
     "default": {
