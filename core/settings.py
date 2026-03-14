@@ -192,6 +192,7 @@ TWILIO_VERIFY_SERVICE_SID = "VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
+    "https://api.tradlogistics.com",
     "https://tradlogistics.com",
     "https://www.tradlogistics.com",
 ]
@@ -204,9 +205,10 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
+USE_X_FORWARDED_HOST = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = False
 
 # Redis channel layer
 CHANNEL_LAYERS = {
