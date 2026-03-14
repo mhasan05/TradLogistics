@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-68f8#$8e!1oar_!7x6cyk4arkdtt1)cxd3f0a!u-=&y^k6bfzn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    "api.tradlogistics.com",
+    "tradlogistics.com",
+    "www.tradlogistics.com",
+]
 
 AUTH_USER_MODEL = 'accounts.User'
 
